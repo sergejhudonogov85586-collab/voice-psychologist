@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@dmk-dark/opus-media-recorder-fork": "^0.8.1",
+    "opus-media-recorder": "^0.8.0"
+  }
+}
