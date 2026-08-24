@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, Float
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -45,3 +45,36 @@ class SupportMessage(Base):
     is_from_user = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     is_read = Column(Boolean, default=False)
+
+# === НОВЫЕ ТАБЛИЦЫ ДЛЯ АДМИНКИ ===
+
+class Payment(Base):
+    __tablename__ = "payments"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    amount = Column(Float)
+    plan = Column(String(50))
+    status = Column(String(50), default="pending")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class CarouselTip(Base):
+    __tablename__ = "carousel_tips"
+    id = Column(Integer, primary_key=True, index=True)
+    text = Column(Text, nullable=False)
+    is_active = Column(Boolean, default=True)
+    order = Column(Integer, default=0)
+
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(100), unique=True, nullable=False)
+    value = Column(Text)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class UserLog(Base):
+    __tablename__ = "user_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    action = Column(String(255))
+    details = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

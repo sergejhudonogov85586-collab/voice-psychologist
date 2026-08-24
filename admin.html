@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админка Самопознание</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f0f4ff; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 20px; }
+        h1 { color: #1a2a6c; }
+        .section { border-top: 2px solid #e0e6f0; margin-top: 20px; padding-top: 20px; }
+        .flex { display: flex; flex-wrap: wrap; gap: 20px; }
+        .card { background: #f8faff; padding: 15px; border-radius: 12px; flex: 1; min-width: 200px; }
+        .card h3 { margin: 0; color: #1a2a6c; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px 12px; border-bottom: 1px solid #e0e6f0; text-align: left; }
+        th { background: #e8edf5; }
+        input, textarea, select { padding: 8px; border: 1px solid #d0d8e8; border-radius: 8px; width: 100%; margin: 4px 0; }
+        button { background: #1a2a6c; color: white; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; }
+        button:hover { background: #2a3a7c; }
+        .danger { background: #e74c3c; }
+        .danger:hover { background: #c0392b; }
+        .success { background: #27ae60; }
+        .success:hover { background: #219a52; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🧠 Админ-панель Самопознание</h1>
+    <div>
+        <input type="password" id="adminPassword" placeholder="Введите пароль админа" style="width: 300px;">
+        <button onclick="login()">Войти</button>
+    </div>
+    <div id="adminContent" class="hidden">
+        <!-- Статистика -->
+        <div class="section">
+            <h2>📊 Статистика</h2>
+            <div class="flex" id="statsContainer">
+                <div class="card"><h3>Пользователей</h3><p id="statUsers">-</p></div>
+                <div class="card"><h3>Сессий</h3><p id="statSessions">-</p></div>
+                <div class="card"><h3>Платежей</h3><p id="statPayments">-</p></div>
+                <div class="card"><h3>Активных сегодня</h3><p id="statActive">-</p></div>
+            </div>
+        </div>
+
+        <!-- Управление каруселью -->
+        <div class="section">
+            <h2>🔄 Управление каруселью</h2>
+            <div>
+                <textarea id="newTipText" placeholder="Текст новой подсказки" style="width: 80%;"></textarea>
+                <button onclick="addTip()">Добавить</button>
+            </div>
+            <ul id="tipsList"></ul>
+        </div>
+
+        <!-- Пользователи -->
+        <div class="section">
+            <h2>👥 Пользователи</h2>
+            <input type="text" id="userSearch" placeholder="Поиск по email или имени" oninput="loadUsers()">
+            <table>
+                <thead><tr><th>ID</th><th>Email</th><th>Имя</th><th>Подписка</th><th>До</th><th>Действие</th></tr></thead>
+                <tbody id="usersTableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Логи -->
+        <div class="section">
+            <h2>📜 Логи действий</h2>
+            <table>
+                <thead><tr><th>Пользователь</th><th>Действие</th><th>Детали</th><th>Время</th></tr></thead>
+                <tbody id="logsTableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Режим техобслуживания -->
+        <div class="section">
+            <h2>🔧 Режим техобслуживания</h2>
+            <button onclick="toggleMaintenance()" id="maintenanceToggle">Включить</button>
+        </div>
+
+        <!-- Цены подписок -->
+        <div class="section">
+            <h2>💰 Цены подписок</h2>
+            <label>Месяц: <input type="number" id="priceMonth" value="399"></label>
+            <label>Год: <input type="number" id="priceYear" value="3350"></label>
+            <button onclick="savePrices()">Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const API_BASE = 'https://sergej-production.up.railway.app';
+let token = null;
+
+function login() {
+    const pass = document.getElementById('adminPassword').value;
+    if (!pass) { alert('Введите пароль'); return; }
+    // Проверяем, загружая статистику
+    fetch(`${API_BASE}/admin/stats?password=${pass}`)
+        .then(res => {
+            if (res.status === 403) throw new Error('Неверный пароль');
+            if (!res.ok) throw new Error('Ошибка');
+            return res.json();
+        })
+        .then(() => {
+            token = pass;
+            document.getElementById('adminContent').classList.remove('hidden');
+            loadStats();
+            loadUsers();
+            loadTips();
+            loadLogs();
+            loadMaintenanceStatus();
+            loadPrices();
+        })
+        .catch(err => alert('Ошибка: ' + err.message));
+}
+
+// Загрузка статистики
+function loadStats() {
+    fetch(`${API_BASE}/admin/stats?password=${token}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('statUsers').textContent = data.users;
+            document.getElementById('statSessions').textContent = data.sessions;
+            document.getElementById('statPayments').textContent = data.payments || 0;
+            document.getElementById('statActive').textContent = data.active_today || 0;
+        });
+}
+
+// Загрузка пользователей
+function loadUsers() {
+    const search = document.getElementById('userSearch').value;
+    fetch(`${API_BASE}/admin/users?password=${token}&search=${encodeURIComponent(search)}`)
+        .then(res => res.json())
+        .then(users => {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td>${u.id}</td>
+                    <td>${u.email || '-'}</td>
+                    <td>${u.name}</td>
+                    <td>${u.subscription}</td>
+                    <td>${u.end ? new Date(u.end).toLocaleDateString() : '-'}</td>
+                    <td><button onclick="givePremium(${u.id})">Выдать премиум</button></td>
+                </tr>
+            `).join('');
+        });
+}
+
+// Выдать премиум
+function givePremium(userId) {
+    const days = prompt('На сколько дней выдать премиум? (число)', 30);
+    if (!days) return;
+    fetch(`${API_BASE}/admin/give_premium`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `user_id=${userId}&days=${days}&password=${token}`
+    })
+        .then(res => res.json())
+        .then(() => {
+            alert('Премиум выдан!');
+            loadUsers();
+            loadStats();
+        })
+        .catch(err => alert('Ошибка: ' + err.message));
+}
+
+// Управление каруселью
+function loadTips() {
+    fetch(`${API_BASE}/admin/tips?password=${token}`)
+        .then(res => res.json())
+        .then(tips => {
+            const list = document.getElementById('tipsList');
+            list.innerHTML = tips.map(t => `
+                <li>
+                    <span>${t.text} ${t.is_active ? '✅' : '❌'}</span>
+                    <button onclick="editTip(${t.id})">✏️</button>
+                    <button onclick="deleteTip(${t.id})" class="danger">🗑️</button>
+                </li>
+            `).join('');
+        });
+}
+
+function addTip() {
+    const text = document.getElementById('newTipText').value.trim();
+    if (!text) return;
+    fetch(`${API_BASE}/admin/tips/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `text=${encodeURIComponent(text)}&password=${token}`
+    })
+        .then(() => {
+            document.getElementById('newTipText').value = '';
+            loadTips();
+        });
+}
+
+function editTip(id) {
+    const newText = prompt('Новый текст подсказки:');
+    if (newText === null) return;
+    const isActive = confirm('Активна? (OK - да, Отмена - нет)');
+    fetch(`${API_BASE}/admin/tips/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `tip_id=${id}&text=${encodeURIComponent(newText)}&is_active=${isActive}&password=${token}`
+    })
+        .then(() => loadTips());
+}
+
+function deleteTip(id) {
+    if (!confirm('Удалить подсказку?')) return;
+    fetch(`${API_BASE}/admin/tips/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `tip_id=${id}&password=${token}`
+    })
+        .then(() => loadTips());
+}
+
+// Режим техобслуживания
+function loadMaintenanceStatus() {
+    fetch(`${API_BASE}/admin/maintenance?password=${token}`)
+        .then(res => res.json())
+        .then(data => {
+            const btn = document.getElementById('maintenanceToggle');
+            btn.textContent = data.enabled ? 'Выключить' : 'Включить';
+        });
+}
+
+function toggleMaintenance() {
+    const current = document.getElementById('maintenanceToggle').textContent === 'Включить' ? false : true;
+    fetch(`${API_BASE}/admin/maintenance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `enabled=${!current}&password=${token}`
+    })
+        .then(() => loadMaintenanceStatus());
+}
+
+// Цены подписок
+function loadPrices() {
+    fetch(`${API_BASE}/admin/prices?password=${token}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('priceMonth').value = data.month;
+            document.getElementById('priceYear').value = data.year;
+        });
+}
+
+function savePrices() {
+    const month = document.getElementById('priceMonth').value;
+    const year = document.getElementById('priceYear').value;
+    fetch(`${API_BASE}/admin/prices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `month=${month}&year=${year}&password=${token}`
+    })
+        .then(() => alert('Цены сохранены'));
+}
+
+// Логи
+function loadLogs() {
+    fetch(`${API_BASE}/admin/logs?password=${token}&limit=50`)
+        .then(res => res.json())
+        .then(logs => {
+            const tbody = document.getElementById('logsTableBody');
+            tbody.innerHTML = logs.map(l => `
+                <tr>
+                    <td>${l.user_id}</td>
+                    <td>${l.action}</td>
+                    <td>${l.details || '-'}</td>
+                    <td>${new Date(l.time).toLocaleString()}</td>
+                </tr>
+            `).join('');
+        });
+}
+</script>
+</body>
+</html>

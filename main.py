@@ -1,20 +1,24 @@
 import os
 import re
 import uuid
-import hashlib
-import secrets
 import logging
 import requests
 from datetime import datetime, timedelta
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, status
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import desc, func
+from sqlalchemy.orm import Session  # <-- добавлено
 from dotenv import load_dotenv
 from jose import JWTError, jwt
+from passlib.context import CryptContext
 from pydantic import BaseModel
 from database import get_db, init_db
-from models import User, SessionModel, Emotion, SupportMessage
+from models import (
+    User, SessionModel, Emotion, SupportMessage,
+    Payment, CarouselTip, SystemSetting, UserLog
+)
+
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -27,10 +31,7 @@ app = FastAPI(title="Самопознание - Голосовой психол�
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://way2me.netlify.app",
-        "https://sergej-production.up.railway.app"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,25 +44,8 @@ SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkeychangeinproduction")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-
-# === Хеширование пароля (через hashlib) ===
-def hash_password(password: str) -> str:
-    # Используем соль из 16 случайных байт
-    salt = secrets.token_hex(16)
-    # Хешируем пароль с солью
-    hashed = hashlib.sha256((salt + password).encode('utf-8')).hexdigest()
-    # Возвращаем соль + хеш
-    return f"{salt}:{hashed}"
-
-def verify_password(password: str, hashed_password: str) -> bool:
-    try:
-        salt, stored_hash = hashed_password.split(':')
-        # Вычисляем хеш для введённого пароля с той же солью
-        computed_hash = hashlib.sha256((salt + password).encode('utf-8')).hexdigest()
-        return secrets.compare_digest(computed_hash, stored_hash)
-    except Exception:
-        return False
 
 # === Pydantic модели ===
 class UserCreate(BaseModel):
@@ -69,10 +53,6 @@ class UserCreate(BaseModel):
     phone: str | None = None
     password: str
     name: str = "Пользователь"
-
-class UserLogin(BaseModel):
-    login: str
-    password: str
 
 class Token(BaseModel):
     access_token: str
@@ -94,6 +74,15 @@ class UserOut(BaseModel):
     has_access: bool = True
 
 # === Вспомогательные функции ===
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def verify_password(plain_password, hashed_password):
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except:
+        return False
+
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     if expires_delta:
@@ -218,8 +207,12 @@ def call_yandex_gpt(text: str, user_name: str = "") -> str:
 def recognize_speech(audio_bytes: bytes, filename: str) -> str:
     url = f"https://stt.api.cloud.yandex.net/speech/v1/stt:recognize?folderId={YANDEX_FOLDER_ID}&lang=ru-RU"
     content_type = "audio/ogg;codecs=opus"
-    if filename.endswith('.wav'): content_type = "audio/wav"
-    elif filename.endswith('.mp3'): content_type = "audio/mpeg"
+    if filename.endswith('.wav'):
+        content_type = "audio/wav"
+    elif filename.endswith('.mp3'):
+        content_type = "audio/mpeg"
+    elif filename.endswith('.webm'):
+        content_type = "audio/webm;codecs=opus"
     headers = {"Authorization": f"Api-Key {YANDEX_API_KEY}", "Content-Type": content_type}
     try:
         response = requests.post(url, headers=headers, data=audio_bytes, timeout=30)
@@ -253,7 +246,6 @@ def extract_mood_score(text: str) -> int:
 async def register(user_data: UserCreate, db = Depends(get_db)):
     try:
         logger.info(f"Регистрация: email={user_data.email}, phone={user_data.phone}")
-        # Валидация email
         if user_data.email:
             if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', user_data.email):
                 raise HTTPException(status_code=400, detail="Неверный формат email")
@@ -269,8 +261,7 @@ async def register(user_data: UserCreate, db = Depends(get_db)):
         if not user_data.email and not user_data.phone:
             raise HTTPException(status_code=400, detail="Укажите email или телефон")
         
-        # Хеширование пароля
-        hashed = hash_password(user_data.password)
+        hashed = get_password_hash(user_data.password)
         user = User(
             email=user_data.email,
             phone=user_data.phone,
@@ -305,16 +296,11 @@ async def login(
         else:
             user = db.query(User).filter(User.phone == login).first()
         if not user:
-            logger.warning(f"Пользователь не найден: {login}")
             raise HTTPException(status_code=401, detail="Неверные учётные данные")
-        
         if not user.password_hash:
-            logger.warning("У пользователя нет хеша пароля")
             raise HTTPException(status_code=401, detail="Для этого аккаунта не установлен пароль (возможно, вход через ВК)")
-        
         if not verify_password(password, user.password_hash):
             raise HTTPException(status_code=401, detail="Неверные учётные данные")
-        
         access_token = create_access_token(data={"sub": str(user.id)})
         return {"access_token": access_token, "token_type": "bearer"}
     except HTTPException:
@@ -369,7 +355,7 @@ async def link_account(
         if existing and existing.id != current_user.id:
             raise HTTPException(status_code=400, detail="Телефон уже занят")
         current_user.phone = phone
-    current_user.password_hash = hash_password(password)
+    current_user.password_hash = get_password_hash(password)
     db.commit()
     return {"status": "linked"}
 
@@ -629,7 +615,7 @@ async def get_history(current_user: User = Depends(get_current_user), db = Depen
         ]
     }
 
-# === ПАРЫ (защищённые) ===
+# === ПАРЫ ===
 
 @app.post("/pair/invite")
 async def create_pair_code(current_user: User = Depends(get_current_user), db = Depends(get_db)):
@@ -714,6 +700,162 @@ async def create_pair_task(current_user: User = Depends(get_current_user), db = 
         return {"error": "Партнёр не найден"}
     task_text = call_yandex_gpt(f"Придумай короткое задание для пары (партнёры: {current_user.name} и {partner.name}).")
     return {"task": task_text}
+
+# ===== АДМИНКА =====
+# Пароль админки задан здесь один раз
+ADMIN_PASSWORD = "haginu92"
+
+def admin_required(password: str):
+    if password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=403, detail="Неверный пароль")
+
+@app.get("/admin/stats")
+async def admin_stats(password: str, db: Session = Depends(get_db)):
+    admin_required(password)
+    users_count = db.query(User).count()
+    sessions_count = db.query(SessionModel).count()
+    payments_count = db.query(Payment).count()
+    active_today = db.query(User).filter(User.created_at >= datetime.utcnow() - timedelta(days=1)).count()
+    return {
+        "users": users_count,
+        "sessions": sessions_count,
+        "payments": payments_count,
+        "active_today": active_today
+    }
+
+@app.get("/admin/users")
+async def admin_users(password: str, search: str = None, db: Session = Depends(get_db)):
+    admin_required(password)
+    query = db.query(User)
+    if search:
+        query = query.filter(
+            (User.email.ilike(f"%{search}%")) |
+            (User.name.ilike(f"%{search}%"))
+        )
+    users = query.all()
+    return [{
+        "id": u.id,
+        "email": u.email,
+        "name": u.name,
+        "subscription": u.psychologist_subscription,
+        "end": u.psychologist_end.isoformat() if u.psychologist_end else None
+    } for u in users]
+
+@app.post("/admin/give_premium")
+async def give_premium(
+    user_id: int = Form(...),
+    days: int = Form(30),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    admin_required(password)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "Пользователь не найден")
+    user.psychologist_subscription = "premium"
+    if user.psychologist_end and user.psychologist_end > datetime.utcnow():
+        user.psychologist_end += timedelta(days=days)
+    else:
+        user.psychologist_end = datetime.utcnow() + timedelta(days=days)
+    db.commit()
+    return {"status": "ok", "new_end": user.psychologist_end.isoformat()}
+
+@app.get("/admin/tips")
+async def get_tips(password: str, db: Session = Depends(get_db)):
+    admin_required(password)
+    tips = db.query(CarouselTip).order_by(CarouselTip.order).all()
+    return [{"id": t.id, "text": t.text, "is_active": t.is_active} for t in tips]
+
+@app.post("/admin/tips/add")
+async def add_tip(text: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    admin_required(password)
+    tip = CarouselTip(text=text)
+    db.add(tip)
+    db.commit()
+    return {"status": "ok"}
+
+@app.post("/admin/tips/update")
+async def update_tip(
+    tip_id: int = Form(...),
+    text: str = Form(...),
+    is_active: bool = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    admin_required(password)
+    tip = db.query(CarouselTip).filter(CarouselTip.id == tip_id).first()
+    if not tip:
+        raise HTTPException(404, "Подсказка не найдена")
+    tip.text = text
+    tip.is_active = is_active
+    db.commit()
+    return {"status": "ok"}
+
+@app.post("/admin/tips/delete")
+async def delete_tip(tip_id: int = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    admin_required(password)
+    tip = db.query(CarouselTip).filter(CarouselTip.id == tip_id).first()
+    if tip:
+        db.delete(tip)
+        db.commit()
+    return {"status": "ok"}
+
+@app.get("/admin/maintenance")
+async def get_maintenance(password: str, db: Session = Depends(get_db)):
+    admin_required(password)
+    setting = db.query(SystemSetting).filter(SystemSetting.key == "maintenance_mode").first()
+    return {"enabled": setting.value == "true" if setting else False}
+
+@app.post("/admin/maintenance")
+async def set_maintenance(enabled: bool = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    admin_required(password)
+    setting = db.query(SystemSetting).filter(SystemSetting.key == "maintenance_mode").first()
+    if not setting:
+        setting = SystemSetting(key="maintenance_mode", value=str(enabled).lower())
+        db.add(setting)
+    else:
+        setting.value = str(enabled).lower()
+    db.commit()
+    return {"status": "ok"}
+
+@app.get("/admin/prices")
+async def get_prices(password: str, db: Session = Depends(get_db)):
+    admin_required(password)
+    month = db.query(SystemSetting).filter(SystemSetting.key == "price_month").first()
+    year = db.query(SystemSetting).filter(SystemSetting.key == "price_year").first()
+    return {
+        "month": int(month.value) if month else 399,
+        "year": int(year.value) if year else 3350
+    }
+
+@app.post("/admin/prices")
+async def set_prices(
+    month: int = Form(...),
+    year: int = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    admin_required(password)
+    for key, value in [("price_month", month), ("price_year", year)]:
+        setting = db.query(SystemSetting).filter(SystemSetting.key == key).first()
+        if not setting:
+            setting = SystemSetting(key=key, value=str(value))
+            db.add(setting)
+        else:
+            setting.value = str(value)
+    db.commit()
+    return {"status": "ok"}
+
+@app.get("/admin/logs")
+async def get_logs(password: str, limit: int = 100, db: Session = Depends(get_db)):
+    admin_required(password)
+    logs = db.query(UserLog).order_by(UserLog.created_at.desc()).limit(limit).all()
+    return [{
+        "user_id": l.user_id,
+        "action": l.action,
+        "details": l.details,
+        "time": l.created_at.isoformat()
+    } for l in logs]
 
 if __name__ == "__main__":
     import uvicorn
