@@ -46,8 +46,7 @@ class SupportMessage(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     is_read = Column(Boolean, default=False)
 
-# === НОВЫЕ ТАБЛИЦЫ ДЛЯ АДМИНКИ ===
-
+# Новые таблицы для админки
 class Payment(Base):
     __tablename__ = "payments"
     id = Column(Integer, primary_key=True, index=True)

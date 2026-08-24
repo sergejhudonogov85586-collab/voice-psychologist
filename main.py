@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, sta
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import desc, func
-from sqlalchemy.orm import Session  # <-- добавлено
+from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -19,16 +19,13 @@ from models import (
     Payment, CarouselTip, SystemSetting, UserLog
 )
 
-
-# Настройка логирования
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
 
 app = FastAPI(title="Самопознание - Голосовой психолог")
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -39,7 +36,7 @@ app.add_middleware(
 
 init_db()
 
-# === Аутентификация ===
+# Аутентификация
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkeychangeinproduction")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -47,7 +44,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-# === Pydantic модели ===
 class UserCreate(BaseModel):
     email: str | None = None
     phone: str | None = None
@@ -73,7 +69,6 @@ class UserOut(BaseModel):
     avg_mood: float | None = None
     has_access: bool = True
 
-# === Вспомогательные функции ===
 def get_password_hash(password):
     return pwd_context.hash(password)
 
@@ -85,29 +80,21 @@ def verify_password(plain_password, hashed_password):
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub")
+        user_id = payload.get("sub")
         if user_id is None:
-            raise credentials_exception
+            raise HTTPException(status_code=401, detail="Invalid token")
     except JWTError:
-        raise credentials_exception
-    user = db.query(User).filter(User.id == user_id).first()
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user = db.query(User).filter(User.id == int(user_id)).first()
     if user is None:
-        raise credentials_exception
+        raise HTTPException(status_code=401, detail="User not found")
     return user
 
 def get_or_create_vk_user(vk_id: str, db):
@@ -131,11 +118,11 @@ def has_psychologist_access(user: User) -> bool:
         return True
     return False
 
-# === YANDEX API ===
+# Yandex API
 YANDEX_API_KEY = os.getenv("YANDEX_API_KEY")
 YANDEX_FOLDER_ID = os.getenv("YANDEX_FOLDER_ID")
 
-# === ЛИМИТЫ ===
+# Лимиты
 voice_usage = {}
 upload_usage = {}
 DAILY_VOICE_LIMIT = 20
@@ -178,7 +165,7 @@ def increment_upload_usage(user_id: int):
     else:
         upload_usage[user_id]["count"] = data.get("count", 0) + 1
 
-# === ПРОМПТ ===
+# Промпт
 PSYCHOLOGIST_PROMPT = """Ты — профессиональный психолог с 20-летним стажем. Твоё имя — "Вероника".
 Обращайся к пользователю по имени, если оно известно.
 Говори просто, с эмпатией и лёгким юмором. Будь мягкой, безоценочной.
@@ -240,23 +227,24 @@ def extract_mood_score(text: str) -> int:
         return min(10, max(1, int(match.group(1))))
     return None
 
-# === ЭНДПОИНТЫ АУТЕНТИФИКАЦИИ ===
+# --- Основные эндпоинты (без изменений) ---
+
+@app.get("/")
+def root():
+    return {"status": "ok", "message": "Самопознание API работает!"}
 
 @app.post("/auth/register", response_model=Token)
 async def register(user_data: UserCreate, db = Depends(get_db)):
     try:
-        logger.info(f"Регистрация: email={user_data.email}, phone={user_data.phone}")
         if user_data.email:
             if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', user_data.email):
                 raise HTTPException(status_code=400, detail="Неверный формат email")
-            existing = db.query(User).filter(User.email == user_data.email).first()
-            if existing:
+            if db.query(User).filter(User.email == user_data.email).first():
                 raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
         if user_data.phone:
             if not re.match(r'^\+?[0-9]{10,15}$', user_data.phone):
                 raise HTTPException(status_code=400, detail="Неверный формат телефона")
-            existing = db.query(User).filter(User.phone == user_data.phone).first()
-            if existing:
+            if db.query(User).filter(User.phone == user_data.phone).first():
                 raise HTTPException(status_code=400, detail="Телефон уже зарегистрирован")
         if not user_data.email and not user_data.phone:
             raise HTTPException(status_code=400, detail="Укажите email или телефон")
@@ -273,23 +261,15 @@ async def register(user_data: UserCreate, db = Depends(get_db)):
         db.add(user)
         db.commit()
         db.refresh(user)
-        logger.info(f"Пользователь создан с id={user.id}")
         access_token = create_access_token(data={"sub": str(user.id)})
         return {"access_token": access_token, "token_type": "bearer"}
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Ошибка при регистрации: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка: {str(e)}")
+        logger.error(f"Register error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/auth/login", response_model=Token)
-async def login(
-    login: str = Form(...),
-    password: str = Form(...),
-    db = Depends(get_db)
-):
+async def login(login: str = Form(...), password: str = Form(...), db = Depends(get_db)):
     try:
-        logger.info(f"Вход: login={login}")
         user = None
         if "@" in login:
             user = db.query(User).filter(User.email == login).first()
@@ -297,17 +277,13 @@ async def login(
             user = db.query(User).filter(User.phone == login).first()
         if not user:
             raise HTTPException(status_code=401, detail="Неверные учётные данные")
-        if not user.password_hash:
-            raise HTTPException(status_code=401, detail="Для этого аккаунта не установлен пароль (возможно, вход через ВК)")
-        if not verify_password(password, user.password_hash):
+        if not user.password_hash or not verify_password(password, user.password_hash):
             raise HTTPException(status_code=401, detail="Неверные учётные данные")
         access_token = create_access_token(data={"sub": str(user.id)})
         return {"access_token": access_token, "token_type": "bearer"}
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Ошибка при входе: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка: {str(e)}")
+        logger.error(f"Login error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/auth/vk")
 async def auth_vk(vk_id: str = Form(...), db = Depends(get_db)):
@@ -358,12 +334,6 @@ async def link_account(
     current_user.password_hash = get_password_hash(password)
     db.commit()
     return {"status": "linked"}
-
-# === ОСНОВНЫЕ ЭНДПОИНТЫ (защищённые) ===
-
-@app.get("/")
-def root():
-    return {"status": "ok", "message": "Самопознание API работает!"}
 
 @app.get("/profile", response_model=UserOut)
 async def get_profile(current_user: User = Depends(get_current_user), db = Depends(get_db)):
@@ -615,8 +585,7 @@ async def get_history(current_user: User = Depends(get_current_user), db = Depen
         ]
     }
 
-# === ПАРЫ ===
-
+# --- Пары ---
 @app.post("/pair/invite")
 async def create_pair_code(current_user: User = Depends(get_current_user), db = Depends(get_db)):
     code = str(uuid.uuid4())[:8].upper()
@@ -702,7 +671,6 @@ async def create_pair_task(current_user: User = Depends(get_current_user), db = 
     return {"task": task_text}
 
 # ===== АДМИНКА =====
-# Пароль админки задан здесь один раз
 ADMIN_PASSWORD = "haginu92"
 
 def admin_required(password: str):
@@ -859,6 +827,5 @@ async def get_logs(password: str, limit: int = 100, db: Session = Depends(get_db
 
 if __name__ == "__main__":
     import uvicorn
-    import os
     port = int(os.getenv("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)
