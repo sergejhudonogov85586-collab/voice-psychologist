@@ -366,7 +366,7 @@
 </div>
 
 <script>
-const API_BASE = 'https://sergej-production.up.railway.app';
+const API_BASE = 'https://voice-psychologist.relaxdev.ru';
 let token = localStorage.getItem('access_token');
 let currentAudio = null;
 let currentVoiceAudio = null;
@@ -932,7 +932,7 @@ async function sendMessage() {
 async function startRecording() {
     try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
         mediaRecorder = new MediaRecorder(stream, { mimeType });
         audioChunks = [];
         mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
