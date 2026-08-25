@@ -149,10 +149,11 @@ def send_verification_email(email: str, code: str):
         msg['From'] = SMTP_FROM
         msg['To'] = email
 
+        logger.info(f"Попытка отправить письмо на {email} через {SMTP_HOST}:{SMTP_PORT}")
         with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.sendmail(SMTP_FROM, [email], msg.as_string())
-        logger.info(f"Письмо с кодом отправлено на {email}")
+        logger.info(f"Письмо с кодом успешно отправлено на {email}")
         return True
     except Exception as e:
         logger.error(f"Ошибка отправки письма: {e}")
