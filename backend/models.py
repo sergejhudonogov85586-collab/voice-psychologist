@@ -19,6 +19,10 @@ class User(Base):
     partner_id = Column(Integer, nullable=True)
     voice_responses_enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # === ДОБАВЛЕНЫ ПОЛЯ ДЛЯ ПОДТВЕРЖДЕНИЯ EMAIL ===
+    is_email_verified = Column(Boolean, default=False)
+    verification_code = Column(String(6), nullable=True)
+    verification_code_expires = Column(DateTime, nullable=True)
 
 class SessionModel(Base):
     __tablename__ = "sessions"
@@ -77,3 +81,4 @@ class UserLog(Base):
     action = Column(String(255))
     details = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # поля is_email_verified, verification_code, verification_code_expires удалены из UserLog

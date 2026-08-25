@@ -278,7 +278,6 @@
         <div id="authRegister" style="display:none;">
             <input type="text" id="regName" placeholder="Имя">
             <input type="email" id="regEmail" placeholder="Email">
-            <input type="text" id="regPhone" placeholder="Телефон (опционально)">
             <input type="password" id="regPassword" placeholder="Пароль">
             <button class="btn" style="width:100%;" onclick="register()">Зарегистрироваться</button>
         </div>
@@ -428,7 +427,7 @@ async function register() {
         const response = await fetch(`${API_BASE}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, phone, password })
+            body: JSON.stringify({ name, email, password })
         });
         const data = await response.json();
         if (data.access_token) {

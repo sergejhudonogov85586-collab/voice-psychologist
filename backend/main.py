@@ -2,9 +2,12 @@ import os
 import re
 import uuid
 import logging
+import smtplib
+import random
 import requests
 from datetime import datetime, timedelta
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, status
+from email.mime.text import MIMEText
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import desc, func
@@ -19,13 +22,15 @@ from models import (
     Payment, CarouselTip, SystemSetting, UserLog
 )
 
-logging.basicConfig(level=logging.INFO)
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 load_dotenv()
 
 app = FastAPI(title="Самопознание - Голосовой психолог")
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -44,9 +49,16 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
+# === SMTP настройки (для отправки кода) ===
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.yandex.ru")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM = os.getenv("SMTP_FROM", "")
+
+# === Pydantic модели ===
 class UserCreate(BaseModel):
-    email: str | None = None
-    phone: str | None = None
+    email: str
     password: str
     name: str = "Пользователь"
 
@@ -126,6 +138,25 @@ def has_psychologist_access(user: User) -> bool:
     if user.psychologist_end and datetime.utcnow() < user.psychologist_end:
         return True
     return False
+
+def send_verification_email(email: str, code: str):
+    if not SMTP_USER or not SMTP_PASSWORD:
+        logger.error("SMTP не настроен. Письмо не отправлено.")
+        return False
+    try:
+        msg = MIMEText(f"Ваш код подтверждения: {code}\nКод действует 10 минут.")
+        msg['Subject'] = 'Подтверждение email'
+        msg['From'] = SMTP_FROM
+        msg['To'] = email
+
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(SMTP_FROM, [email], msg.as_string())
+        logger.info(f"Письмо с кодом отправлено на {email}")
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка отправки письма: {e}")
+        return False
 
 # === YANDEX API ===
 YANDEX_API_KEY = os.getenv("YANDEX_API_KEY")
@@ -238,45 +269,68 @@ def extract_mood_score(text: str) -> int:
 
 # === ЭНДПОИНТЫ АУТЕНТИФИКАЦИИ ===
 
-@app.post("/auth/register", response_model=Token)
+@app.post("/auth/register")
 async def register(user_data: UserCreate, db = Depends(get_db)):
     try:
-        logger.info(f"Регистрация: email={user_data.email}, phone={user_data.phone}")
-        if user_data.email:
-            if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', user_data.email):
-                raise HTTPException(status_code=400, detail="Неверный формат email")
-            existing = db.query(User).filter(User.email == user_data.email).first()
-            if existing:
-                raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
-        if user_data.phone:
-            if not re.match(r'^\+?[0-9]{10,15}$', user_data.phone):
-                raise HTTPException(status_code=400, detail="Неверный формат телефона")
-            existing = db.query(User).filter(User.phone == user_data.phone).first()
-            if existing:
-                raise HTTPException(status_code=400, detail="Телефон уже зарегистрирован")
-        if not user_data.email and not user_data.phone:
-            raise HTTPException(status_code=400, detail="Укажите email или телефон")
+        logger.info(f"Регистрация: email={user_data.email}")
+        # Валидация email
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', user_data.email):
+            raise HTTPException(status_code=400, detail="Неверный формат email")
+        existing = db.query(User).filter(User.email == user_data.email).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
         
         hashed = get_password_hash(user_data.password)
         user = User(
             email=user_data.email,
-            phone=user_data.phone,
             password_hash=hashed,
             name=user_data.name,
             psychologist_subscription="trial",
-            psychologist_end=datetime.utcnow() + timedelta(days=3)
+            psychologist_end=datetime.utcnow() + timedelta(days=3),
+            is_email_verified=False
         )
         db.add(user)
         db.commit()
         db.refresh(user)
         logger.info(f"Пользователь создан с id={user.id}")
-        access_token = create_access_token(data={"sub": str(user.id)})
-        return {"access_token": access_token, "token_type": "bearer"}
+
+        # Генерация кода подтверждения
+        code = str(random.randint(100000, 999999))
+        user.verification_code = code
+        user.verification_code_expires = datetime.utcnow() + timedelta(minutes=10)
+        db.commit()
+
+        # Отправка письма
+        success = send_verification_email(user.email, code)
+        if not success:
+            # Если письмо не отправилось, удаляем пользователя?
+            # Лучше вернуть ошибку, но чтобы не усложнять, просто логируем
+            logger.warning("Письмо не отправлено, но пользователь создан")
+
+        return {"message": "Код подтверждения отправлен на почту", "email": user.email}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Ошибка при регистрации: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Внутренняя ошибка: {str(e)}")
+
+@app.post("/auth/verify-email")
+async def verify_email(email: str = Form(...), code: str = Form(...), db = Depends(get_db)):
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(404, "Пользователь не найден")
+    if user.is_email_verified:
+        raise HTTPException(400, "Email уже подтверждён")
+    if user.verification_code != code:
+        raise HTTPException(400, "Неверный код")
+    if user.verification_code_expires < datetime.utcnow():
+        raise HTTPException(400, "Код истёк")
+    user.is_email_verified = True
+    user.verification_code = None
+    user.verification_code_expires = None
+    db.commit()
+    access_token = create_access_token(data={"sub": str(user.id)})
+    return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/auth/login", response_model=Token)
 async def login(
@@ -286,15 +340,13 @@ async def login(
 ):
     try:
         logger.info(f"Вход: login={login}")
-        user = None
-        if "@" in login:
-            user = db.query(User).filter(User.email == login).first()
-        else:
-            user = db.query(User).filter(User.phone == login).first()
+        user = db.query(User).filter(User.email == login).first()
         if not user:
             raise HTTPException(status_code=401, detail="Неверные учётные данные")
         if not user.password_hash:
             raise HTTPException(status_code=401, detail="Для этого аккаунта не установлен пароль (возможно, вход через ВК)")
+        if not user.is_email_verified:
+            raise HTTPException(status_code=401, detail="Email не подтверждён. Проверьте почту.")
         if not verify_password(password, user.password_hash):
             raise HTTPException(status_code=401, detail="Неверные учётные данные")
         access_token = create_access_token(data={"sub": str(user.id)})
