@@ -94,6 +94,7 @@
         #authModal input { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid #e0e6f0; border-radius: 12px; font-size: 14px; }
         #authModal .tab { flex: 1; padding: 8px; border: none; background: transparent; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; }
         #authModal .tab.active { border-bottom-color: #1a2a6c; color: #1a2a6c; }
+        #verifyEmailModal input { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid #e0e6f0; border-radius: 12px; font-size: 14px; }
         @media (max-width: 480px) { .container { padding: 12px; } .header h1 { font-size: 20px; } .tariff-grid { grid-template-columns: 1fr; } .header-right .limit-indicator { font-size: 10px; padding: 2px 8px; } }
     </style>
 </head>
@@ -271,7 +272,7 @@
             <button class="tab" data-auth-tab="register" onclick="switchAuthTab('register')" style="flex:1; padding:8px; border:none; background:transparent; font-weight:600; cursor:pointer; border-bottom:2px solid transparent;">Регистрация</button>
         </div>
         <div id="authLogin">
-            <input type="text" id="loginInput" placeholder="Email или телефон">
+            <input type="text" id="loginInput" placeholder="Email">
             <input type="password" id="passwordInput" placeholder="Пароль">
             <button class="btn" style="width:100%;" onclick="login()">Войти</button>
         </div>
@@ -286,6 +287,18 @@
         </div>
         <div style="margin-top:8px; text-align:center; color:#888; font-size:13px;">Продолжая, вы принимаете условия использования</div>
         <button class="btn btn-secondary" style="width:100%; margin-top:12px;" onclick="document.getElementById('authModal').style.display='none'">Закрыть</button>
+    </div>
+</div>
+
+<!-- Модалка подтверждения email -->
+<div id="verifyEmailModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:white; max-width:400px; width:90%; padding:30px; border-radius:24px;">
+        <h2 style="color:#1a2a6c;">✅ Подтверждение email</h2>
+        <p style="color:#555;">На почту отправлен код. Введите его ниже.</p>
+        <input type="text" id="verifyCodeInput" placeholder="Введите код из письма" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px;">
+        <button class="btn" style="width:100%;" onclick="verifyEmail()">Подтвердить</button>
+        <button class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="document.getElementById('verifyEmailModal').style.display='none'">Закрыть</button>
+        <div id="verifyStatus" style="margin-top:8px; color:#e74c3c;"></div>
     </div>
 </div>
 
@@ -374,6 +387,7 @@ let userName = '';
 let tipsData = [];
 let mediaRecorder, audioChunks = [], isRecording = false, stream = null;
 let currentChart = 'line';
+let registeredEmail = ''; // для хранения email при регистрации
 
 // === Проверка авторизации ===
 if (!token) {
@@ -419,10 +433,9 @@ async function login() {
 async function register() {
     const name = document.getElementById('regName').value;
     const email = document.getElementById('regEmail').value;
-    const phone = document.getElementById('regPhone').value;
     const password = document.getElementById('regPassword').value;
     if (!name || !password) { alert('Имя и пароль обязательны'); return; }
-    if (!email && !phone) { alert('Укажите email или телефон'); return; }
+    if (!email) { alert('Укажите email'); return; }
     try {
         const response = await fetch(`${API_BASE}/auth/register`, {
             method: 'POST',
@@ -430,16 +443,43 @@ async function register() {
             body: JSON.stringify({ name, email, password })
         });
         const data = await response.json();
-        if (data.access_token) {
-            localStorage.setItem('access_token', data.access_token);
-            token = data.access_token;
+        if (response.ok) {
+            registeredEmail = email;
+            document.getElementById('verifyEmailModal').style.display = 'flex';
+            document.getElementById('verifyStatus').textContent = '';
             document.getElementById('authModal').style.display = 'none';
-            initApp();
+            alert('Код отправлен на почту. Введите его в открывшемся окне.');
         } else {
             alert('Ошибка регистрации: ' + (data.detail || ''));
         }
     } catch (e) {
         alert('Ошибка соединения: ' + e.message);
+    }
+}
+
+// === Подтверждение email ===
+async function verifyEmail() {
+    const code = document.getElementById('verifyCodeInput').value.trim();
+    if (!code) { alert('Введите код'); return; }
+    const status = document.getElementById('verifyStatus');
+    status.textContent = 'Проверка...';
+    try {
+        const response = await fetch(`${API_BASE}/auth/verify-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `email=${encodeURIComponent(registeredEmail)}&code=${encodeURIComponent(code)}`
+        });
+        const data = await response.json();
+        if (response.ok) {
+            localStorage.setItem('access_token', data.access_token);
+            token = data.access_token;
+            document.getElementById('verifyEmailModal').style.display = 'none';
+            initApp();
+        } else {
+            status.textContent = 'Ошибка: ' + (data.detail || 'Неверный код');
+        }
+    } catch (e) {
+        status.textContent = 'Ошибка: ' + e.message;
     }
 }
 
@@ -931,7 +971,7 @@ async function sendMessage() {
 async function startRecording() {
     try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+        const mimeType = 'audio/webm;codecs=opus';
         mediaRecorder = new MediaRecorder(stream, { mimeType });
         audioChunks = [];
         mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
