@@ -19,7 +19,7 @@ class User(Base):
     partner_id = Column(Integer, nullable=True)
     voice_responses_enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    # === ДОБАВЛЕНЫ ПОЛЯ ДЛЯ ПОДТВЕРЖДЕНИЯ EMAIL ===
+    # Поля для подтверждения email
     is_email_verified = Column(Boolean, default=False)
     verification_code = Column(String(6), nullable=True)
     verification_code_expires = Column(DateTime, nullable=True)
@@ -50,7 +50,6 @@ class SupportMessage(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     is_read = Column(Boolean, default=False)
 
-# Новые таблицы для админки
 class Payment(Base):
     __tablename__ = "payments"
     id = Column(Integer, primary_key=True, index=True)
@@ -81,4 +80,3 @@ class UserLog(Base):
     action = Column(String(255))
     details = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    # поля is_email_verified, verification_code, verification_code_expires удалены из UserLog
