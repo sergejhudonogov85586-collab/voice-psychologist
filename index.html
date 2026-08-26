@@ -836,6 +836,7 @@ async function loadSupportMessages() {
         container.innerHTML = data.messages.map(m => `
             <div class="support-msg ${m.is_from_user ? 'user' : 'admin'}">
                 ${m.text}
+                ${m.reply ? `<div style="margin-top:4px; color:#27ae60; font-style:italic;">Ответ: ${m.reply}</div>` : ''}
                 <div class="time">${new Date(m.date).toLocaleString()}</div>
             </div>
         `).join('');
