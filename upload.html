@@ -197,6 +197,10 @@
         <div class="card" id="profileCard"><div class="status-text">Загрузка...</div></div>
         <div id="tariffsList" class="tariff-grid"></div>
         <button class="btn btn-danger" onclick="resetTrial()" style="margin-top:12px;width:100%;">🔄 Сбросить подписку (тест)</button>
+        <div style="margin-top:12px; padding:12px; background:#f8faff; border-radius:12px;">
+            <div class="row"><span class="label">Email</span><span class="value" id="profileEmail">—</span></div>
+            <div class="row"><span class="label">Телефон</span><span class="value" id="profilePhone">—</span></div>
+        </div>
     </div>
 
     <!-- ==================== НАСТРОЙКИ ==================== -->
@@ -313,7 +317,7 @@
     </div>
 </div>
 
-<!-- Приветственное модальное окно (заменяем на обычное, но оставляем для совместимости) -->
+<!-- Приветственное модальное окно -->
 <div class="modal-overlay" id="welcomeModal" style="display:none;">
     <div class="modal">
         <h2>🧠 Добро пожаловать в Самопознание!</h2>
@@ -761,6 +765,8 @@ async function loadProfile() {
             <div class="row"><span class="label">Код для пары</span><span class="value">${data.partner_code || 'Нет'}</span></div>
             <div class="row"><span class="label">Голос Вероники</span><span class="value">${data.voice_responses_enabled ? '✅ Включён' : '❌ Выключен'}</span></div>
         `;
+        document.getElementById('profileEmail').textContent = data.email || '—';
+        document.getElementById('profilePhone').textContent = data.phone || '—';
     } catch (e) { card.innerHTML = '<div class="status-text">❌ Ошибка</div>'; }
 }
 
@@ -1039,7 +1045,6 @@ async function sendGrammarMessage() {
         const botMsg = document.createElement('div');
         botMsg.className = 'message bot';
         botMsg.innerHTML = result.response || 'Извините, я не поняла.';
-        // Кнопка копирования
         const copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
         copyBtn.textContent = '📋 Копировать';
@@ -1054,9 +1059,6 @@ async function sendGrammarMessage() {
 }
 
 // === НАСТАВНИК: ИСТОРИЯ ===
-let currentHistoryPage = 1;
-const HISTORY_PAGE_SIZE = 10;
-
 async function loadTutorHistory() {
     const list = document.getElementById('historyList');
     list.innerHTML = '<div class="status-text">Загрузка...</div>';
@@ -1074,7 +1076,7 @@ async function loadTutorHistory() {
             list.innerHTML = '<div class="status-text">📭 Нет сессий наставника</div>';
             return;
         }
-        // Группируем по датам для удобства
+        // Группируем по датам
         const grouped = data.sessions.reduce((acc, s) => {
             const date = new Date(s.date).toLocaleDateString();
             if (!acc[date]) acc[date] = [];
@@ -1085,15 +1087,12 @@ async function loadTutorHistory() {
         for (const [date, sessions] of Object.entries(grouped)) {
             html += `<div style="margin-bottom:12px;"><div style="font-weight:600;color:#1a2a6c;margin-bottom:6px;">📅 ${date}</div>`;
             sessions.forEach(s => {
-                const marks = s.marks || [];
-                const markBadges = marks.map(m => `<span class="mark-badge" style="background:${m.color || '#2196f3'};">${m.label || '🏷️'}</span>`).join('');
                 html += `
                     <div class="history-item">
                         <div class="date">${new Date(s.date).toLocaleTimeString()} ${s.is_live ? '🎓 Лекция' : '📖 Занятие'} ${s.subject ? `· ${s.subject}` : ''}</div>
                         <div class="text"><b>Вы:</b> ${s.text}</div>
                         <div class="text"><b>Ответ:</b> ${s.response ? s.response.substring(0, 150) + '...' : '—'}</div>
                         <div style="margin-top:4px;">
-                            ${markBadges}
                             <button class="btn btn-secondary btn-small" onclick="openMarkModal(${s.id})">🏷️ Пометка</button>
                             <button class="btn btn-secondary btn-small" onclick="viewSession(${s.id})">📖 Детали</button>
                         </div>
