@@ -1122,6 +1122,25 @@ async def admin_reply(
     db.commit()
     return {"status": "ok", "reply": reply_text}
 
+# === ИСТОРИЯ ПСИХОЛОГА (для обратной совместимости) ===
+@app.get("/history")
+async def get_psychologist_history(current_user: User = Depends(get_current_user), db = Depends(get_db)):
+    sessions = db.query(Session).filter(
+        Session.user_id == current_user.id,
+        Session.mode == "psychologist"
+    ).order_by(desc(Session.created_at)).all()
+    return {
+        "sessions": [
+            {
+                "text": s.text,
+                "response": s.response,
+                "mood_score": s.mood_score,
+                "date": s.created_at.isoformat()
+            }
+            for s in sessions
+        ]
+    }
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8080))
