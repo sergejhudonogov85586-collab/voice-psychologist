@@ -377,7 +377,7 @@ async def auth_vk(vk_id: str = Form(...), db = Depends(get_db)):
 
 @app.get("/auth/me", response_model=UserOut)
 async def get_me(current_user: User = Depends(get_current_user), db = Depends(get_db)):
-    session_count = db.query(Session).filter(Session.user_id == current_user.id).count()
+    session_count = db.query(func.count(Session.id)).filter(Session.user_id == current_user.id).scalar() or 0
     avg_mood = db.query(func.avg(Session.mood_score)).filter(Session.user_id == current_user.id).scalar()
     return UserOut(
         id=current_user.id,
@@ -406,7 +406,7 @@ def root():
 
 @app.get("/profile", response_model=UserOut)
 async def get_profile(current_user: User = Depends(get_current_user), db = Depends(get_db)):
-    session_count = db.query(Session).filter(Session.user_id == current_user.id).count()
+    session_count = db.query(func.count(Session.id)).filter(Session.user_id == current_user.id).scalar() or 0
     avg_mood = db.query(func.avg(Session.mood_score)).filter(Session.user_id == current_user.id).scalar()
     return UserOut(
         id=current_user.id,
