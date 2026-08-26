@@ -347,8 +347,8 @@ async def login(
             raise HTTPException(status_code=401, detail="Неверные учётные данные")
         if not user.password_hash:
             raise HTTPException(status_code=401, detail="Для этого аккаунта не установлен пароль (возможно, вход через ВК)")
-        # if not user.is_email_verified:
-#     raise HTTPException(status_code=401, detail="Email не подтверждён. Проверьте почту.")
+        if not user.is_email_verified:
+    raise HTTPException(status_code=401, detail="Email не подтверждён. Проверьте почту.")
         if not verify_password(password, user.password_hash):
             raise HTTPException(status_code=401, detail="Неверные учётные данные")
         access_token = create_access_token(data={"sub": str(user.id)})
