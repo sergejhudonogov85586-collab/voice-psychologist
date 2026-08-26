@@ -81,3 +81,12 @@ class UserLog(Base):
     action = Column(String(255))
     details = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # === НОВАЯ ТАБЛИЦА ДЛЯ ЛИМИТОВ ===
+class UserLimit(Base):
+    __tablename__ = "user_limits"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, unique=True, index=True, nullable=False)
+    voice_used = Column(Integer, default=0)
+    upload_used = Column(Integer, default=0)
+    last_reset = Column(DateTime, default=datetime.utcnow)
