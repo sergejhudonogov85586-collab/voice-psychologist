@@ -47,6 +47,7 @@ class SupportMessage(Base):
     user_id = Column(Integer, index=True)
     message = Column(Text)
     is_from_user = Column(Boolean, default=True)
+    reply = Column(Text, nullable=True)   # ответ администратора
     created_at = Column(DateTime, default=datetime.utcnow)
     is_read = Column(Boolean, default=False)
 

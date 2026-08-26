@@ -23,6 +23,7 @@
         .success { background: #27ae60; }
         .success:hover { background: #219a52; }
         .hidden { display: none; }
+        .label { font-weight: normal; color: #888; }
     </style>
 </head>
 <body>
@@ -86,6 +87,20 @@
             <label>Год: <input type="number" id="priceYear" value="3350"></label>
             <button onclick="savePrices()">Сохранить</button>
         </div>
+
+        <!-- === НОВЫЙ БЛОК: Сообщения поддержки === -->
+        <div class="section">
+            <h2>💬 Сообщения поддержки</h2>
+            <div id="supportMessagesList" style="max-height:300px; overflow-y:auto; border:1px solid #e0e6f0; border-radius:8px; padding:10px; background:#f8faff;">
+                <!-- сюда будут загружаться сообщения -->
+            </div>
+            <div style="margin-top:10px;">
+                <input type="text" id="replyMessageId" placeholder="ID сообщения" style="width:80px; padding:8px; border:2px solid #e0e6f0; border-radius:8px;">
+                <textarea id="replyText" placeholder="Текст ответа..." style="width:70%; padding:8px; border:2px solid #e0e6f0; border-radius:8px;"></textarea>
+                <button class="btn" onclick="sendReply()">📤 Ответить</button>
+                <div id="replyStatus" style="margin-top:8px;"></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -96,7 +111,6 @@ let token = null;
 function login() {
     const pass = document.getElementById('adminPassword').value;
     if (!pass) { alert('Введите пароль'); return; }
-    // Проверяем, загружая статистику
     fetch(`${API_BASE}/admin/stats?password=${pass}`)
         .then(res => {
             if (res.status === 403) throw new Error('Неверный пароль');
@@ -112,6 +126,7 @@ function login() {
             loadLogs();
             loadMaintenanceStatus();
             loadPrices();
+            loadSupportMessages(); // загружаем сообщения поддержки
         })
         .catch(err => alert('Ошибка: ' + err.message));
 }
@@ -274,6 +289,54 @@ function loadLogs() {
                 </tr>
             `).join('');
         });
+}
+
+// === НОВЫЕ ФУНКЦИИ ДЛЯ ПОДДЕРЖКИ ===
+
+// Загрузка сообщений поддержки
+async function loadSupportMessages() {
+    const container = document.getElementById('supportMessagesList');
+    try {
+        const response = await fetch(`${API_BASE}/support/messages`);
+        const data = await response.json();
+        if (!data.messages) return;
+        container.innerHTML = data.messages.map(m => `
+            <div style="border-bottom:1px solid #e8edf5; padding:8px 0;">
+                <b>ID: ${m.id}</b> | <span class="label">${m.is_from_user ? '👤 Пользователь' : '🛡️ Админ'}</span>
+                <div>${m.text}</div>
+                ${m.reply ? `<div style="color:#27ae60; margin-top:4px;">📩 Ответ: ${m.reply}</div>` : ''}
+                <div style="font-size:11px; color:#888;">${new Date(m.date).toLocaleString()}</div>
+            </div>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = 'Ошибка загрузки';
+    }
+}
+
+// Отправка ответа администратора
+async function sendReply() {
+    const messageId = document.getElementById('replyMessageId').value.trim();
+    const replyText = document.getElementById('replyText').value.trim();
+    if (!messageId || !replyText) { alert('Введите ID сообщения и текст ответа'); return; }
+    const status = document.getElementById('replyStatus');
+    status.textContent = 'Отправка...';
+    try {
+        const response = await fetch(`${API_BASE}/admin/support/reply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `message_id=${messageId}&reply_text=${encodeURIComponent(replyText)}&password=${token}`
+        });
+        const data = await response.json();
+        if (response.ok) {
+            status.textContent = '✅ Ответ отправлен!';
+            document.getElementById('replyText').value = '';
+            loadSupportMessages(); // обновляем список
+        } else {
+            status.textContent = '❌ Ошибка: ' + (data.detail || '');
+        }
+    } catch (e) {
+        status.textContent = '❌ Ошибка: ' + e.message;
+    }
 }
 </script>
 </body>

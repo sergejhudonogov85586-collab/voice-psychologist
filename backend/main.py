@@ -892,6 +892,25 @@ async def get_logs(password: str, limit: int = 100, db: Session = Depends(get_db
         "time": l.created_at.isoformat()
     } for l in logs]
 
+# === ОТВЕТЫ В ПОДДЕРЖКУ (АДМИНКА) ===
+
+@app.post("/admin/support/reply")
+async def admin_reply(
+    message_id: int = Form(...),
+    reply_text: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    admin_required(password)
+    original = db.query(SupportMessage).filter(SupportMessage.id == message_id).first()
+    if not original:
+        raise HTTPException(404, "Сообщение не найдено")
+    
+    # Сохраняем ответ в колонку reply
+    original.reply = reply_text
+    db.commit()
+    
+    return {"status": "ok", "reply": reply_text}
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8080))
