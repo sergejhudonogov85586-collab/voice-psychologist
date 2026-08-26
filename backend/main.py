@@ -18,8 +18,9 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 from database import get_db, init_db
 from models import (
-    User, SessionModel, Emotion, SupportMessage,
-    Payment, CarouselTip, SystemSetting, UserLog, UserLimit
+    User, Session, Emotion, SupportMessage,
+    Payment, CarouselTip, SystemSetting, UserLog, UserLimit,
+    Note, Mark
 )
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-app = FastAPI(title="Самопознание - Голосовой психолог")
+app = FastAPI(title="Самопознание")
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,13 +47,18 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 43200  # 30 дней
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-# SMTP
+# SMTP (для подтверждения email)
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.yandex.ru")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 SMTP_FROM = os.getenv("SMTP_FROM", "")
 
+# Yandex API
+YANDEX_API_KEY = os.getenv("YANDEX_API_KEY")
+YANDEX_FOLDER_ID = os.getenv("YANDEX_FOLDER_ID")
+
+# === Модели Pydantic ===
 class UserCreate(BaseModel):
     email: str
     password: str
@@ -69,6 +75,9 @@ class UserOut(BaseModel):
     name: str
     psychologist_subscription: str
     psychologist_end: datetime | None
+    tutor_subscription: str
+    tutor_end: datetime | None
+    tutor_minutes_balance: int
     has_seen_welcome: bool
     voice_responses_enabled: bool
     partner_code: str | None
@@ -77,6 +86,7 @@ class UserOut(BaseModel):
     avg_mood: float | None = None
     has_access: bool = True
 
+# === Вспомогательные функции ===
 def get_password_hash(password):
     return pwd_context.hash(password)
 
@@ -120,7 +130,9 @@ def get_or_create_vk_user(vk_id: str, db):
             vk_id=vk_id,
             name="Пользователь",
             psychologist_subscription="trial",
-            psychologist_end=datetime.utcnow() + timedelta(days=3)
+            psychologist_end=datetime.utcnow() + timedelta(days=3),
+            tutor_subscription="trial",
+            tutor_end=datetime.utcnow() + timedelta(days=3)
         )
         db.add(user)
         db.commit()
@@ -131,6 +143,13 @@ def has_psychologist_access(user: User) -> bool:
     if user.psychologist_subscription == "premium":
         return True
     if user.psychologist_end and datetime.utcnow() < user.psychologist_end:
+        return True
+    return False
+
+def has_tutor_access(user: User) -> bool:
+    if user.tutor_subscription == "premium":
+        return True
+    if user.tutor_end and datetime.utcnow() < user.tutor_end:
         return True
     return False
 
@@ -154,12 +173,10 @@ def send_verification_email(email: str, code: str):
         logger.error(f"Ошибка отправки письма: {e}")
         return False
 
-YANDEX_API_KEY = os.getenv("YANDEX_API_KEY")
-YANDEX_FOLDER_ID = os.getenv("YANDEX_FOLDER_ID")
-
 # === ЛИМИТЫ (БД) ===
 DAILY_VOICE_LIMIT = 20
 DAILY_UPLOAD_LIMIT = 10
+TUTOR_DAILY_VOICE_LIMIT = 15  # для наставника отдельно
 
 def get_today():
     return datetime.utcnow().date()
@@ -209,7 +226,7 @@ def increment_upload_usage(user_id: int, db: Session):
     limit.upload_used += 1
     db.commit()
 
-# === ПРОМПТ ===
+# === ПРОМПТЫ ===
 PSYCHOLOGIST_PROMPT = """Ты — профессиональный психолог с 20-летним стажем. Твоё имя — "Вероника".
 Обращайся к пользователю по имени, если оно известно.
 Говори просто, с эмпатией и лёгким юмором. Будь мягкой, безоценочной.
@@ -217,11 +234,18 @@ PSYCHOLOGIST_PROMPT = """Ты — профессиональный психол�
 В конце каждого ответа добавь оценку настроения: [Оценка настроения: X/10]
 Отвечай на русском языке."""
 
-def call_yandex_gpt(text: str, user_name: str = "") -> str:
+TUTOR_PROMPT = """Ты — профессиональный репетитор с 15-летним стажем. Твоё имя — "Вероника".
+Ты помогаешь школьникам и студентам по всем предметам: математика, физика, химия, биология, история, литература, английский, программирование и другим.
+Твоя задача — объяснять сложные вещи простым и разговорным языком, использовать примеры из жизни, задавать наводящие вопросы.
+Если нужно решить задачу — дай пошаговый алгоритм. Если нужно написать реферат или диплом — помоги со структурой, идеями и аргументацией.
+Ты должен быть терпеливым, поддерживающим и вдохновляющим. Отвечай на русском языке. НЕ ставь оценку настроения."""
+
+def call_yandex_gpt(text: str, mode: str, user_name: str = "", context: str = "") -> str:
     url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
     headers = {"Authorization": f"Api-Key {YANDEX_API_KEY}", "Content-Type": "application/json"}
+    prompt = PSYCHOLOGIST_PROMPT if mode == "psychologist" else TUTOR_PROMPT
     name_prefix = f"Обращайся к пользователю по имени: {user_name}.\n" if user_name else ""
-    full_text = f"{PSYCHOLOGIST_PROMPT}\n{name_prefix}\nПользователь: {text}\n\nВероника:"
+    full_text = f"{prompt}\n{name_prefix}{context}\nПользователь: {text}\n\nВероника:"
     data = {
         "modelUri": f"gpt://{YANDEX_FOLDER_ID}/yandexgpt/latest",
         "completionOptions": {"stream": False, "temperature": 0.7, "maxTokens": 1000},
@@ -238,10 +262,8 @@ def call_yandex_gpt(text: str, user_name: str = "") -> str:
 def recognize_speech(audio_bytes: bytes, filename: str) -> str:
     url = f"https://stt.api.cloud.yandex.net/speech/v1/stt:recognize?folderId={YANDEX_FOLDER_ID}&lang=ru-RU"
     content_type = "audio/ogg;codecs=opus"
-    if filename.endswith('.wav'):
-        content_type = "audio/wav"
-    elif filename.endswith('.mp3'):
-        content_type = "audio/mpeg"
+    if filename.endswith('.wav'): content_type = "audio/wav"
+    elif filename.endswith('.mp3'): content_type = "audio/mpeg"
     headers = {"Authorization": f"Api-Key {YANDEX_API_KEY}", "Content-Type": content_type}
     try:
         response = requests.post(url, headers=headers, data=audio_bytes, timeout=30)
@@ -269,11 +291,11 @@ def extract_mood_score(text: str) -> int:
         return min(10, max(1, int(match.group(1))))
     return None
 
-# === АУТЕНТИФИКАЦИЯ ===
+# === ЭНДПОИНТЫ АУТЕНТИФИКАЦИИ ===
+
 @app.post("/auth/register")
 async def register(user_data: UserCreate, db = Depends(get_db)):
     try:
-        logger.info(f"Регистрация: email={user_data.email}")
         if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', user_data.email):
             raise HTTPException(status_code=400, detail="Неверный формат email")
         existing = db.query(User).filter(User.email == user_data.email).first()
@@ -287,6 +309,8 @@ async def register(user_data: UserCreate, db = Depends(get_db)):
             name=user_data.name,
             psychologist_subscription="trial",
             psychologist_end=datetime.utcnow() + timedelta(days=3),
+            tutor_subscription="trial",
+            tutor_end=datetime.utcnow() + timedelta(days=3),
             is_email_verified=False
         )
         db.add(user)
@@ -299,10 +323,7 @@ async def register(user_data: UserCreate, db = Depends(get_db)):
         user.verification_code_expires = datetime.utcnow() + timedelta(minutes=10)
         db.commit()
 
-        success = send_verification_email(user.email, code)
-        if not success:
-            logger.warning("Письмо не отправлено, но пользователь создан")
-
+        send_verification_email(user.email, code)
         return {"message": "Код подтверждения отправлен на почту", "email": user.email}
     except HTTPException:
         raise
@@ -329,13 +350,8 @@ async def verify_email(email: str = Form(...), code: str = Form(...), db = Depen
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/auth/login", response_model=Token)
-async def login(
-    login: str = Form(...),
-    password: str = Form(...),
-    db = Depends(get_db)
-):
+async def login(login: str = Form(...), password: str = Form(...), db = Depends(get_db)):
     try:
-        logger.info(f"Вход: login={login}")
         user = db.query(User).filter(User.email == login).first()
         if not user:
             raise HTTPException(status_code=401, detail="Неверные учётные данные")
@@ -361,8 +377,8 @@ async def auth_vk(vk_id: str = Form(...), db = Depends(get_db)):
 
 @app.get("/auth/me", response_model=UserOut)
 async def get_me(current_user: User = Depends(get_current_user), db = Depends(get_db)):
-    session_count = db.query(SessionModel).filter(SessionModel.user_id == current_user.id).count()
-    avg_mood = db.query(func.avg(SessionModel.mood_score)).filter(SessionModel.user_id == current_user.id).scalar()
+    session_count = db.query(Session).filter(Session.user_id == current_user.id).count()
+    avg_mood = db.query(func.avg(Session.mood_score)).filter(Session.user_id == current_user.id).scalar()
     return UserOut(
         id=current_user.id,
         email=current_user.email,
@@ -370,48 +386,28 @@ async def get_me(current_user: User = Depends(get_current_user), db = Depends(ge
         name=current_user.name,
         psychologist_subscription=current_user.psychologist_subscription,
         psychologist_end=current_user.psychologist_end,
+        tutor_subscription=current_user.tutor_subscription,
+        tutor_end=current_user.tutor_end,
+        tutor_minutes_balance=current_user.tutor_minutes_balance,
         has_seen_welcome=current_user.has_seen_welcome,
         voice_responses_enabled=current_user.voice_responses_enabled,
         partner_code=current_user.partner_code,
         partner_id=current_user.partner_id,
         session_count=session_count,
         avg_mood=round(avg_mood, 1) if avg_mood else None,
-        has_access=has_psychologist_access(current_user)
+        has_access=has_psychologist_access(current_user) or has_tutor_access(current_user)
     )
 
-@app.post("/auth/link")
-async def link_account(
-    email: str | None = Form(None),
-    phone: str | None = Form(None),
-    password: str = Form(...),
-    current_user: User = Depends(get_current_user),
-    db = Depends(get_db)
-):
-    if not email and not phone:
-        raise HTTPException(status_code=400, detail="Укажите email или телефон")
-    if email:
-        existing = db.query(User).filter(User.email == email).first()
-        if existing and existing.id != current_user.id:
-            raise HTTPException(status_code=400, detail="Email уже занят")
-        current_user.email = email
-    if phone:
-        existing = db.query(User).filter(User.phone == phone).first()
-        if existing and existing.id != current_user.id:
-            raise HTTPException(status_code=400, detail="Телефон уже занят")
-        current_user.phone = phone
-    current_user.password_hash = get_password_hash(password)
-    db.commit()
-    return {"status": "linked"}
-
 # === ОСНОВНЫЕ ЭНДПОИНТЫ ===
+
 @app.get("/")
 def root():
     return {"status": "ok", "message": "Самопознание API работает!"}
 
 @app.get("/profile", response_model=UserOut)
 async def get_profile(current_user: User = Depends(get_current_user), db = Depends(get_db)):
-    session_count = db.query(SessionModel).filter(SessionModel.user_id == current_user.id).count()
-    avg_mood = db.query(func.avg(SessionModel.mood_score)).filter(SessionModel.user_id == current_user.id).scalar()
+    session_count = db.query(Session).filter(Session.user_id == current_user.id).count()
+    avg_mood = db.query(func.avg(Session.mood_score)).filter(Session.user_id == current_user.id).scalar()
     return UserOut(
         id=current_user.id,
         email=current_user.email,
@@ -419,13 +415,16 @@ async def get_profile(current_user: User = Depends(get_current_user), db = Depen
         name=current_user.name,
         psychologist_subscription=current_user.psychologist_subscription,
         psychologist_end=current_user.psychologist_end,
+        tutor_subscription=current_user.tutor_subscription,
+        tutor_end=current_user.tutor_end,
+        tutor_minutes_balance=current_user.tutor_minutes_balance,
         has_seen_welcome=current_user.has_seen_welcome,
         voice_responses_enabled=current_user.voice_responses_enabled,
         partner_code=current_user.partner_code,
         partner_id=current_user.partner_id,
         session_count=session_count,
         avg_mood=round(avg_mood, 1) if avg_mood else None,
-        has_access=has_psychologist_access(current_user)
+        has_access=has_psychologist_access(current_user) or has_tutor_access(current_user)
     )
 
 @app.get("/limits")
@@ -436,7 +435,8 @@ async def get_limits(current_user: User = Depends(get_current_user), db: Session
         "voice_used": voice_used,
         "voice_limit": voice_limit,
         "upload_used": upload_used,
-        "upload_limit": upload_limit
+        "upload_limit": upload_limit,
+        "tutor_minutes": current_user.tutor_minutes_balance
     }
 
 @app.get("/emotions")
@@ -454,7 +454,10 @@ async def accept_welcome(current_user: User = Depends(get_current_user), db = De
 async def get_tariffs():
     return {"tariffs": {
         "psychologist_month": {"name": "Психолог (месяц)", "price": 399, "period": "30 дней"},
-        "psychologist_year": {"name": "Психолог (год)", "price": 3350, "period": "365 дней"}
+        "psychologist_year": {"name": "Психолог (год)", "price": 3350, "period": "365 дней"},
+        "tutor_week": {"name": "Наставник (неделя)", "price": 199, "period": "7 дней"},
+        "tutor_month": {"name": "Наставник (месяц)", "price": 599, "period": "30 дней"},
+        "tutor_year": {"name": "Наставник (год)", "price": 4990, "period": "365 дней"}
     }}
 
 @app.post("/subscribe/psychologist")
@@ -464,6 +467,28 @@ async def subscribe_psychologist(plan: str = Form(...), current_user: User = Dep
     current_user.psychologist_end = datetime.utcnow() + timedelta(days=days)
     db.commit()
     return {"subscription": "premium", "end": current_user.psychologist_end.isoformat()}
+
+@app.post("/subscribe/tutor")
+async def subscribe_tutor(plan: str = Form(...), current_user: User = Depends(get_current_user), db = Depends(get_db)):
+    current_user.tutor_subscription = "premium"
+    days = 7 if "week" in plan else 30 if "month" in plan else 365
+    current_user.tutor_end = datetime.utcnow() + timedelta(days=days)
+    db.commit()
+    return {"subscription": "premium", "end": current_user.tutor_end.isoformat()}
+
+MINUTE_PACKAGES = {
+    "60": {"price": 299, "minutes": 60},
+    "300": {"price": 1190, "minutes": 300},
+    "600": {"price": 1990, "minutes": 600}
+}
+
+@app.post("/buy_minutes")
+async def buy_minutes(package: str = Form(...), current_user: User = Depends(get_current_user), db = Depends(get_db)):
+    if package not in MINUTE_PACKAGES:
+        raise HTTPException(status_code=400, detail="Неверный пакет")
+    current_user.tutor_minutes_balance += MINUTE_PACKAGES[package]["minutes"]
+    db.commit()
+    return {"balance": current_user.tutor_minutes_balance}
 
 @app.post("/settings/update")
 async def update_settings(
@@ -481,8 +506,10 @@ async def update_settings(
 
 @app.post("/settings/delete_all")
 async def delete_all_data(current_user: User = Depends(get_current_user), db = Depends(get_db)):
-    db.query(SessionModel).filter(SessionModel.user_id == current_user.id).delete()
+    db.query(Session).filter(Session.user_id == current_user.id).delete()
     db.query(Emotion).filter(Emotion.user_id == current_user.id).delete()
+    db.query(Note).filter(Note.user_id == current_user.id).delete()
+    db.query(Mark).filter(Mark.user_id == current_user.id).delete()
     db.commit()
     return {"status": "ok"}
 
@@ -502,20 +529,24 @@ async def get_support_messages(db = Depends(get_db)):
 async def reset_trial(current_user: User = Depends(get_current_user), db = Depends(get_db)):
     current_user.psychologist_subscription = "trial"
     current_user.psychologist_end = datetime.utcnow() + timedelta(days=3)
+    current_user.tutor_subscription = "trial"
+    current_user.tutor_end = datetime.utcnow() + timedelta(days=3)
     db.commit()
     return {"status": "ok"}
 
-@app.post("/chat")
-async def chat(text: str = Form(...), current_user: User = Depends(get_current_user), db = Depends(get_db)):
+# === ПСИХОЛОГ ===
+
+@app.post("/psychologist/chat")
+async def psychologist_chat(text: str = Form(...), current_user: User = Depends(get_current_user), db = Depends(get_db)):
     if not has_psychologist_access(current_user):
-        return {"error": "Доступ заблокирован. Оформите подписку.", "requires_payment": True}
+        return {"error": "Доступ к психологу ограничен. Оформите подписку.", "requires_payment": True}
     
-    response_text = call_yandex_gpt(text, current_user.name)
+    response_text = call_yandex_gpt(text, "psychologist", current_user.name)
     mood_score = extract_mood_score(response_text)
     if mood_score:
         response_text = re.sub(r'\s*\[Оценка настроения:\s*\d+\s*/10\]\s*', '', response_text).strip()
     
-    session = SessionModel(user_id=current_user.id, text=text, response=response_text, mood_score=mood_score)
+    session = Session(user_id=current_user.id, mode="psychologist", text=text, response=response_text, mood_score=mood_score)
     db.add(session)
     db.commit()
     
@@ -523,7 +554,7 @@ async def chat(text: str = Form(...), current_user: User = Depends(get_current_u
     if current_user.voice_responses_enabled:
         audio_data = synthesize_speech(response_text)
         if audio_data:
-            increment_voice_usage(current_user.id, db)  # считаем как голосовую сессию
+            increment_voice_usage(current_user.id, db)
     
     _, voice_used, voice_limit = check_voice_limit(current_user.id, db)
     _, upload_used, upload_limit = check_upload_limit(current_user.id, db)
@@ -539,12 +570,122 @@ async def chat(text: str = Form(...), current_user: User = Depends(get_current_u
         }
     }
 
-# === ЭНДПОИНТ /voice УДАЛЁН ===
+# Психолог: голосовой ввод УДАЛЁН (только текст)
 
-@app.post("/upload")
-async def upload_audio(audio: UploadFile = File(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if not has_psychologist_access(current_user):
-        return {"error": "Доступ заблокирован. Оформите подписку.", "requires_payment": True}
+# === НАСТАВНИК ===
+
+@app.post("/tutor/chat")
+async def tutor_chat(
+    text: str = Form(...),
+    subject: str = Form(None),
+    is_live: bool = Form(False),
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    if not has_tutor_access(current_user):
+        return {"error": "Доступ к наставнику ограничен. Оформите подписку.", "requires_payment": True}
+    
+    if is_live:
+        if current_user.tutor_minutes_balance <= 0:
+            return {"error": "Недостаточно минут для лекции. Купите пакет минут.", "requires_minutes": True}
+        current_user.tutor_minutes_balance -= 1
+        db.commit()
+    
+    context = f"Предмет: {subject or 'Общий'}\n" if subject else ""
+    response_text = call_yandex_gpt(text, "tutor", current_user.name, context)
+    
+    session = Session(
+        user_id=current_user.id,
+        mode="tutor",
+        text=text,
+        response=response_text,
+        is_live=is_live,
+        subject=subject
+    )
+    db.add(session)
+    db.commit()
+    
+    audio_data = None
+    if current_user.voice_responses_enabled:
+        audio_data = synthesize_speech(response_text)
+        if audio_data:
+            increment_voice_usage(current_user.id, db)
+    
+    return {
+        "response": response_text,
+        "audio": audio_data.hex() if audio_data else None,
+        "minutes_balance": current_user.tutor_minutes_balance
+    }
+
+@app.post("/tutor/voice")
+async def tutor_voice(
+    audio: UploadFile = File(...),
+    subject: str = Form(None),
+    is_live: bool = Form(False),
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    if not has_tutor_access(current_user):
+        return {"error": "Доступ к наставнику ограничен. Оформите подписку.", "requires_payment": True}
+    
+    is_allowed, used, limit = check_voice_limit(current_user.id, db)
+    if not is_allowed:
+        return {
+            "error": f"Вы исчерпали дневной лимит голосовых сессий ({limit}/{limit}).",
+            "requires_payment": True,
+            "limits": {"voice_used": used, "voice_limit": limit}
+        }
+    
+    audio_bytes = await audio.read()
+    if len(audio_bytes) > 10 * 1024 * 1024:
+        return {"error": "Файл слишком большой. Максимум 10 МБ."}
+    
+    recognized_text = recognize_speech(audio_bytes, audio.filename)
+    if recognized_text.startswith("Ошибка") or not recognized_text:
+        return {"error": "Не удалось распознать речь."}
+    
+    if is_live:
+        if current_user.tutor_minutes_balance <= 0:
+            return {"error": "Недостаточно минут для лекции. Купите пакет минут.", "requires_minutes": True}
+        current_user.tutor_minutes_balance -= 1
+        db.commit()
+    
+    context = f"Предмет: {subject or 'Общий'}\n" if subject else ""
+    response_text = call_yandex_gpt(recognized_text, "tutor", current_user.name, context)
+    
+    session = Session(
+        user_id=current_user.id,
+        mode="tutor",
+        text=recognized_text,
+        response=response_text,
+        is_live=is_live,
+        subject=subject
+    )
+    db.add(session)
+    db.commit()
+    
+    increment_voice_usage(current_user.id, db)
+    
+    audio_data = None
+    if current_user.voice_responses_enabled:
+        audio_data = synthesize_speech(response_text)
+    
+    return {
+        "recognized_text": recognized_text,
+        "response": response_text,
+        "audio": audio_data.hex() if audio_data else None,
+        "minutes_balance": current_user.tutor_minutes_balance
+    }
+
+@app.post("/tutor/upload")
+async def tutor_upload(
+    audio: UploadFile = File(...),
+    subject: str = Form(None),
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    if not has_tutor_access(current_user):
+        return {"error": "Доступ к наставнику ограничен. Оформите подписку.", "requires_payment": True}
     
     is_allowed, used, limit = check_upload_limit(current_user.id, db)
     if not is_allowed:
@@ -562,57 +703,172 @@ async def upload_audio(audio: UploadFile = File(...), current_user: User = Depen
     if recognized_text.startswith("Ошибка") or not recognized_text:
         return {"error": "Не удалось распознать речь."}
     
-    response_text = call_yandex_gpt(recognized_text, current_user.name)
-    mood_score = extract_mood_score(response_text)
-    if mood_score:
-        response_text = re.sub(r'\s*\[Оценка настроения:\s*\d+\s*/10\]\s*', '', response_text).strip()
+    context = f"Предмет: {subject or 'Общий'}\n" if subject else ""
+    response_text = call_yandex_gpt(recognized_text, "tutor", current_user.name, context)
     
-    session = SessionModel(user_id=current_user.id, text=recognized_text, response=response_text, mood_score=mood_score)
+    session = Session(
+        user_id=current_user.id,
+        mode="tutor",
+        text=recognized_text,
+        response=response_text,
+        subject=subject
+    )
     db.add(session)
     db.commit()
     
     increment_upload_usage(current_user.id, db)
-    _, voice_used, voice_limit = check_voice_limit(current_user.id, db)
-    _, upload_used, upload_limit = check_upload_limit(current_user.id, db)
     
     audio_data = None
     if current_user.voice_responses_enabled:
         audio_data = synthesize_speech(response_text)
         if audio_data:
             increment_voice_usage(current_user.id, db)
-            _, voice_used, voice_limit = check_voice_limit(current_user.id, db)
     
     return {
         "recognized_text": recognized_text,
         "response": response_text,
-        "audio": audio_data.hex() if audio_data else None,
-        "limits": {
-            "voice_used": voice_used,
-            "voice_limit": voice_limit,
-            "upload_used": upload_used,
-            "upload_limit": upload_limit
-        }
+        "audio": audio_data.hex() if audio_data else None
     }
 
-@app.get("/history")
-async def get_history(current_user: User = Depends(get_current_user), db = Depends(get_db)):
-    sessions = db.query(SessionModel).filter(
-        SessionModel.user_id == current_user.id,
-        SessionModel.is_pair_session == False
-    ).order_by(desc(SessionModel.created_at)).all()
+@app.get("/tutor/history")
+async def tutor_history(
+    current_user: User = Depends(get_current_user),
+    subject: str = None,
+    date_from: str = None,
+    date_to: str = None,
+    is_live: bool = None,
+    db = Depends(get_db)
+):
+    query = db.query(Session).filter(Session.user_id == current_user.id, Session.mode == "tutor")
+    if subject:
+        query = query.filter(Session.subject == subject)
+    if date_from:
+        query = query.filter(Session.created_at >= datetime.fromisoformat(date_from))
+    if date_to:
+        query = query.filter(Session.created_at <= datetime.fromisoformat(date_to))
+    if is_live is not None:
+        query = query.filter(Session.is_live == is_live)
+    sessions = query.order_by(desc(Session.created_at)).all()
     return {
         "sessions": [
             {
+                "id": s.id,
                 "text": s.text,
                 "response": s.response,
-                "mood_score": s.mood_score,
+                "subject": s.subject,
+                "is_live": s.is_live,
                 "date": s.created_at.isoformat()
             }
             for s in sessions
         ]
     }
 
+@app.post("/tutor/notes")
+async def create_note(
+    session_id: int = Form(...),
+    text: str = Form(...),
+    selection: str = Form(None),
+    color: str = Form("yellow"),
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    note = Note(
+        user_id=current_user.id,
+        session_id=session_id,
+        text=text,
+        selection=selection,
+        color=color
+    )
+    db.add(note)
+    db.commit()
+    return {"status": "ok", "note_id": note.id}
+
+@app.get("/tutor/notes")
+async def get_notes(
+    session_id: int = None,
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    query = db.query(Note).filter(Note.user_id == current_user.id)
+    if session_id:
+        query = query.filter(Note.session_id == session_id)
+    notes = query.order_by(desc(Note.created_at)).all()
+    return {
+        "notes": [
+            {
+                "id": n.id,
+                "text": n.text,
+                "selection": n.selection,
+                "color": n.color,
+                "date": n.created_at.isoformat()
+            }
+            for n in notes
+        ]
+    }
+
+@app.post("/tutor/marks")
+async def create_mark(
+    session_id: int = Form(...),
+    color: str = Form("blue"),
+    label: str = Form(None),
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    mark = Mark(
+        user_id=current_user.id,
+        session_id=session_id,
+        color=color,
+        label=label
+    )
+    db.add(mark)
+    db.commit()
+    return {"status": "ok", "mark_id": mark.id}
+
+@app.get("/tutor/marks")
+async def get_marks(
+    session_id: int = None,
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    query = db.query(Mark).filter(Mark.user_id == current_user.id)
+    if session_id:
+        query = query.filter(Mark.session_id == session_id)
+    marks = query.order_by(desc(Mark.created_at)).all()
+    return {
+        "marks": [
+            {
+                "id": m.id,
+                "color": m.color,
+                "label": m.label,
+                "date": m.created_at.isoformat()
+            }
+            for m in marks
+        ]
+    }
+
+@app.post("/tutor/grammar")
+async def tutor_grammar(
+    text: str = Form(...),
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    if not has_tutor_access(current_user):
+        return {"error": "Доступ к наставнику ограничен. Оформите подписку.", "requires_payment": True}
+    
+    grammar_prompt = f"""
+Ты — преподаватель русского языка и литературы. Твоя задача — помочь пользователю улучшить грамотность.
+Проверь следующий текст на ошибки: орфографические, пунктуационные, стилистические.
+Выдели ошибки, покажи правильный вариант и кратко объясни правило.
+Если текст написан правильно — похвали пользователя и предложи усложнить задание.
+
+Текст пользователя:
+{text}
+"""
+    response_text = call_yandex_gpt(grammar_prompt, "tutor", current_user.name)
+    return {"response": response_text}
+
 # === ПАРЫ ===
+
 @app.post("/pair/invite")
 async def create_pair_code(current_user: User = Depends(get_current_user), db = Depends(get_db)):
     code = str(uuid.uuid4())[:8].upper()
@@ -633,48 +889,37 @@ async def connect_pair(code: str = Form(...), current_user: User = Depends(get_c
 
 @app.post("/pair/disconnect")
 async def disconnect_pair(current_user: User = Depends(get_current_user), db = Depends(get_db)):
-    if current_user.partner_id:
-        current_user.partner_id = None
-        current_user.partner_code = None
-        db.commit()
+    current_user.partner_id = None
+    current_user.partner_code = None
+    db.commit()
     return {"status": "disconnected"}
 
 @app.post("/pair/session")
 async def pair_session(text: str = Form(...), current_user: User = Depends(get_current_user), db = Depends(get_db)):
     if not has_psychologist_access(current_user):
-        return {"error": "Доступ заблокирован.", "requires_payment": True}
+        return {"error": "Доступ к паре ограничен. Оформите подписку.", "requires_payment": True}
     if not current_user.partner_id:
         raise HTTPException(status_code=400, detail="Нет связанного партнёра")
-    
     partner = db.query(User).filter(User.id == current_user.partner_id).first()
     if not partner:
         raise HTTPException(status_code=404, detail="Партнёр не найден")
-    
     response_text = call_yandex_gpt(
         f"Помоги паре. Партнёр 1 ({current_user.name}): {text}. Партнёр 2: {partner.name}",
+        "psychologist",
         ""
     )
-    session = SessionModel(user_id=current_user.id, text=text, response=response_text, is_pair_session=True)
+    session = Session(user_id=current_user.id, mode="psychologist", text=text, response=response_text, is_pair_session=True)
     db.add(session)
     db.commit()
     return {"response": response_text}
 
 @app.get("/pair/history")
 async def get_pair_history(current_user: User = Depends(get_current_user), db = Depends(get_db)):
-    sessions = db.query(SessionModel).filter(
-        SessionModel.user_id == current_user.id,
-        SessionModel.is_pair_session == True
-    ).order_by(desc(SessionModel.created_at)).all()
-    return {
-        "sessions": [
-            {
-                "text": s.text,
-                "response": s.response,
-                "date": s.created_at.isoformat()
-            }
-            for s in sessions
-        ]
-    }
+    sessions = db.query(Session).filter(
+        Session.user_id == current_user.id,
+        Session.is_pair_session == True
+    ).order_by(desc(Session.created_at)).all()
+    return {"sessions": [{"text": s.text, "response": s.response, "date": s.created_at.isoformat()} for s in sessions]}
 
 @app.get("/pair/dynamics")
 async def get_pair_dynamics(current_user: User = Depends(get_current_user), db = Depends(get_db)):
@@ -694,10 +939,15 @@ async def create_pair_task(current_user: User = Depends(get_current_user), db = 
     partner = db.query(User).filter(User.id == current_user.partner_id).first()
     if not partner:
         return {"error": "Партнёр не найден"}
-    task_text = call_yandex_gpt(f"Придумай короткое задание для пары (партнёры: {current_user.name} и {partner.name}).")
+    task_text = call_yandex_gpt(
+        f"Придумай короткое задание для пары (партнёры: {current_user.name} и {partner.name}).",
+        "psychologist",
+        ""
+    )
     return {"task": task_text}
 
-# ===== АДМИНКА =====
+# === АДМИНКА ===
+
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "haginu92")
 
 def admin_required(password: str):
@@ -709,7 +959,7 @@ async def admin_stats(password: str, db: Session = Depends(get_db)):
     admin_required(password)
     return {
         "users": db.query(User).count(),
-        "sessions": db.query(SessionModel).count(),
+        "sessions": db.query(Session).count(),
         "payments": db.query(Payment).count(),
         "active_today": db.query(User).filter(User.created_at >= datetime.utcnow() - timedelta(days=1)).count()
     }
@@ -734,10 +984,15 @@ async def give_premium(
     if not user:
         raise HTTPException(404, "Пользователь не найден")
     user.psychologist_subscription = "premium"
+    user.tutor_subscription = "premium"
     if user.psychologist_end and user.psychologist_end > datetime.utcnow():
         user.psychologist_end += timedelta(days=days)
     else:
         user.psychologist_end = datetime.utcnow() + timedelta(days=days)
+    if user.tutor_end and user.tutor_end > datetime.utcnow():
+        user.tutor_end += timedelta(days=days)
+    else:
+        user.tutor_end = datetime.utcnow() + timedelta(days=days)
     db.commit()
     return {"status": "ok", "new_end": user.psychologist_end.isoformat()}
 
@@ -801,22 +1056,37 @@ async def set_maintenance(enabled: bool = Form(...), password: str = Form(...), 
 @app.get("/admin/prices")
 async def get_prices(password: str, db: Session = Depends(get_db)):
     admin_required(password)
-    month = db.query(SystemSetting).filter(SystemSetting.key == "price_month").first()
-    year = db.query(SystemSetting).filter(SystemSetting.key == "price_year").first()
+    month = db.query(SystemSetting).filter(SystemSetting.key == "price_psychologist_month").first()
+    year = db.query(SystemSetting).filter(SystemSetting.key == "price_psychologist_year").first()
+    tutor_week = db.query(SystemSetting).filter(SystemSetting.key == "price_tutor_week").first()
+    tutor_month = db.query(SystemSetting).filter(SystemSetting.key == "price_tutor_month").first()
+    tutor_year = db.query(SystemSetting).filter(SystemSetting.key == "price_tutor_year").first()
     return {
-        "month": int(month.value) if month else 399,
-        "year": int(year.value) if year else 3350
+        "psychologist_month": int(month.value) if month else 399,
+        "psychologist_year": int(year.value) if year else 3350,
+        "tutor_week": int(tutor_week.value) if tutor_week else 199,
+        "tutor_month": int(tutor_month.value) if tutor_month else 599,
+        "tutor_year": int(tutor_year.value) if tutor_year else 4990
     }
 
 @app.post("/admin/prices")
 async def set_prices(
-    month: int = Form(...),
-    year: int = Form(...),
     password: str = Form(...),
+    psychologist_month: int = Form(...),
+    psychologist_year: int = Form(...),
+    tutor_week: int = Form(...),
+    tutor_month: int = Form(...),
+    tutor_year: int = Form(...),
     db: Session = Depends(get_db)
 ):
     admin_required(password)
-    for key, value in [("price_month", month), ("price_year", year)]:
+    for key, value in [
+        ("price_psychologist_month", psychologist_month),
+        ("price_psychologist_year", psychologist_year),
+        ("price_tutor_week", tutor_week),
+        ("price_tutor_month", tutor_month),
+        ("price_tutor_year", tutor_year)
+    ]:
         setting = db.query(SystemSetting).filter(SystemSetting.key == key).first()
         if not setting:
             setting = SystemSetting(key=key, value=str(value))
