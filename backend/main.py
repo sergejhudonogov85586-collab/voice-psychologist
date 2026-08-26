@@ -5,9 +5,6 @@ import logging
 import smtplib
 import random
 import requests
-import subprocess
-import tempfile
-import shutil
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, status, Query
@@ -25,7 +22,6 @@ from models import (
     Payment, CarouselTip, SystemSetting, UserLog, UserLimit
 )
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -33,7 +29,6 @@ load_dotenv()
 
 app = FastAPI(title="Самопознание - Голосовой психолог")
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -44,7 +39,6 @@ app.add_middleware(
 
 init_db()
 
-# === Аутентификация ===
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkeychangeinproduction")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 43200  # 30 дней
@@ -52,14 +46,13 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 43200  # 30 дней
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-# === SMTP настройки (для отправки кода) ===
+# SMTP
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.yandex.ru")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 SMTP_FROM = os.getenv("SMTP_FROM", "")
 
-# === Pydantic модели ===
 class UserCreate(BaseModel):
     email: str
     password: str
@@ -84,7 +77,6 @@ class UserOut(BaseModel):
     avg_mood: float | None = None
     has_access: bool = True
 
-# === Вспомогательные функции ===
 def get_password_hash(password):
     return pwd_context.hash(password)
 
@@ -162,35 +154,10 @@ def send_verification_email(email: str, code: str):
         logger.error(f"Ошибка отправки письма: {e}")
         return False
 
-# === Конвертация WebM в OGG (для голоса) ===
-def convert_webm_to_ogg(audio_bytes: bytes) -> bytes:
-    with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as tmp_in:
-        tmp_in.write(audio_bytes)
-        tmp_in_path = tmp_in.name
-    with tempfile.NamedTemporaryFile(suffix='.ogg', delete=False) as tmp_out:
-        tmp_out_path = tmp_out.name
-
-    try:
-        subprocess.run([
-            'ffmpeg', '-i', tmp_in_path, '-c:a', 'libopus', '-ar', '16000', '-ac', '1',
-            tmp_out_path
-        ], check=True, capture_output=True, timeout=30)
-        with open(tmp_out_path, 'rb') as f:
-            converted = f.read()
-        return converted
-    except Exception as e:
-        logger.error(f"Ошибка конвертации WebM в OGG: {e}")
-        return audio_bytes
-    finally:
-        os.unlink(tmp_in_path)
-        if os.path.exists(tmp_out_path):
-            os.unlink(tmp_out_path)
-
-# === YANDEX API ===
 YANDEX_API_KEY = os.getenv("YANDEX_API_KEY")
 YANDEX_FOLDER_ID = os.getenv("YANDEX_FOLDER_ID")
 
-# === ЛИМИТЫ (ХРАНЯТСЯ В БД) ===
+# === ЛИМИТЫ (БД) ===
 DAILY_VOICE_LIMIT = 20
 DAILY_UPLOAD_LIMIT = 10
 
@@ -269,22 +236,12 @@ def call_yandex_gpt(text: str, user_name: str = "") -> str:
         return f"Ошибка: {str(e)}"
 
 def recognize_speech(audio_bytes: bytes, filename: str) -> str:
-    # Конвертация WebM → OGG, если установлен FFmpeg
-    if filename.endswith('.webm'):
-        if shutil.which('ffmpeg'):
-            audio_bytes = convert_webm_to_ogg(audio_bytes)
-            filename = filename.replace('.webm', '.ogg')
-        else:
-            logger.warning("FFmpeg не найден, отправка WebM как есть")
-    
     url = f"https://stt.api.cloud.yandex.net/speech/v1/stt:recognize?folderId={YANDEX_FOLDER_ID}&lang=ru-RU"
     content_type = "audio/ogg;codecs=opus"
     if filename.endswith('.wav'):
         content_type = "audio/wav"
     elif filename.endswith('.mp3'):
         content_type = "audio/mpeg"
-    elif filename.endswith('.webm'):
-        content_type = "audio/webm;codecs=opus"
     headers = {"Authorization": f"Api-Key {YANDEX_API_KEY}", "Content-Type": content_type}
     try:
         response = requests.post(url, headers=headers, data=audio_bytes, timeout=30)
@@ -312,8 +269,7 @@ def extract_mood_score(text: str) -> int:
         return min(10, max(1, int(match.group(1))))
     return None
 
-# === ЭНДПОИНТЫ АУТЕНТИФИКАЦИИ ===
-
+# === АУТЕНТИФИКАЦИЯ ===
 @app.post("/auth/register")
 async def register(user_data: UserCreate, db = Depends(get_db)):
     try:
@@ -338,13 +294,11 @@ async def register(user_data: UserCreate, db = Depends(get_db)):
         db.refresh(user)
         logger.info(f"Пользователь создан с id={user.id}")
 
-        # Генерация кода подтверждения
         code = str(random.randint(100000, 999999))
         user.verification_code = code
         user.verification_code_expires = datetime.utcnow() + timedelta(minutes=10)
         db.commit()
 
-        # Отправка письма
         success = send_verification_email(user.email, code)
         if not success:
             logger.warning("Письмо не отправлено, но пользователь создан")
@@ -449,8 +403,7 @@ async def link_account(
     db.commit()
     return {"status": "linked"}
 
-# === ОСНОВНЫЕ ЭНДПОИНТЫ (защищённые) ===
-
+# === ОСНОВНЫЕ ЭНДПОИНТЫ ===
 @app.get("/")
 def root():
     return {"status": "ok", "message": "Самопознание API работает!"}
@@ -570,7 +523,7 @@ async def chat(text: str = Form(...), current_user: User = Depends(get_current_u
     if current_user.voice_responses_enabled:
         audio_data = synthesize_speech(response_text)
         if audio_data:
-            increment_voice_usage(current_user.id, db)  # голосовой ответ учитывается в лимитах
+            increment_voice_usage(current_user.id, db)  # считаем как голосовую сессию
     
     _, voice_used, voice_limit = check_voice_limit(current_user.id, db)
     _, upload_used, upload_limit = check_upload_limit(current_user.id, db)
@@ -586,58 +539,7 @@ async def chat(text: str = Form(...), current_user: User = Depends(get_current_u
         }
     }
 
-@app.post("/voice")
-async def voice(audio: UploadFile = File(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if not has_psychologist_access(current_user):
-        return {"error": "Доступ заблокирован. Оформите подписку.", "requires_payment": True}
-    
-    is_allowed, used, limit = check_voice_limit(current_user.id, db)
-    if not is_allowed:
-        return {
-            "error": f"Вы исчерпали дневной лимит голосовых сессий ({limit}/{limit}).",
-            "requires_payment": True,
-            "limits": {"voice_used": used, "voice_limit": limit}
-        }
-    
-    audio_bytes = await audio.read()
-    if len(audio_bytes) > 10 * 1024 * 1024:
-        return {"error": "Файл слишком большой. Максимум 10 МБ."}
-    
-    recognized_text = recognize_speech(audio_bytes, audio.filename)
-    if recognized_text.startswith("Ошибка") or not recognized_text:
-        return {"error": "Не удалось распознать речь."}
-    
-    response_text = call_yandex_gpt(recognized_text, current_user.name)
-    mood_score = extract_mood_score(response_text)
-    if mood_score:
-        response_text = re.sub(r'\s*\[Оценка настроения:\s*\d+\s*/10\]\s*', '', response_text).strip()
-    
-    session = SessionModel(user_id=current_user.id, text=recognized_text, response=response_text, mood_score=mood_score)
-    db.add(session)
-    db.commit()
-    
-    increment_voice_usage(current_user.id, db)
-    _, voice_used, voice_limit = check_voice_limit(current_user.id, db)
-    _, upload_used, upload_limit = check_upload_limit(current_user.id, db)
-    
-    audio_data = None
-    if current_user.voice_responses_enabled:
-        audio_data = synthesize_speech(response_text)
-        if audio_data:
-            increment_voice_usage(current_user.id, db)
-            _, voice_used, voice_limit = check_voice_limit(current_user.id, db)
-    
-    return {
-        "recognized_text": recognized_text,
-        "response": response_text,
-        "audio": audio_data.hex() if audio_data else None,
-        "limits": {
-            "voice_used": voice_used,
-            "voice_limit": voice_limit,
-            "upload_used": upload_used,
-            "upload_limit": upload_limit
-        }
-    }
+# === ЭНДПОИНТ /voice УДАЛЁН ===
 
 @app.post("/upload")
 async def upload_audio(audio: UploadFile = File(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -711,7 +613,6 @@ async def get_history(current_user: User = Depends(get_current_user), db = Depen
     }
 
 # === ПАРЫ ===
-
 @app.post("/pair/invite")
 async def create_pair_code(current_user: User = Depends(get_current_user), db = Depends(get_db)):
     code = str(uuid.uuid4())[:8].upper()
@@ -797,7 +698,6 @@ async def create_pair_task(current_user: User = Depends(get_current_user), db = 
     return {"task": task_text}
 
 # ===== АДМИНКА =====
-
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "haginu92")
 
 def admin_required(password: str):
@@ -937,7 +837,6 @@ async def get_logs(password: str, limit: int = 100, db: Session = Depends(get_db
         "time": l.created_at.isoformat()
     } for l in logs]
 
-# === ОТВЕТЫ АДМИНИСТРАТОРА В ПОДДЕРЖКУ ===
 @app.post("/admin/support/reply")
 async def admin_reply(
     message_id: int = Form(...),
@@ -949,10 +848,8 @@ async def admin_reply(
     original = db.query(SupportMessage).filter(SupportMessage.id == message_id).first()
     if not original:
         raise HTTPException(404, "Сообщение не найдено")
-    
     original.reply = reply_text
     db.commit()
-    
     return {"status": "ok", "reply": reply_text}
 
 if __name__ == "__main__":

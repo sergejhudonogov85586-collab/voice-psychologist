@@ -113,13 +113,12 @@
     </div>
 
     <div class="carousel" id="tipsCarousel">
-        <div class="text" id="tipText">💡 Напишите о том, что вас беспокоит, или запишите голосовое сообщение.</div>
+        <div class="text" id="tipText">💡 Напишите о том, что вас беспокоит.</div>
         <div class="dots" id="tipDots"></div>
     </div>
 
     <div class="tabs">
         <button class="tab active" data-tab="chat">💬 Чат</button>
-        <button class="tab" data-tab="voice">🎙 Голос</button>
         <button class="tab" data-tab="file">📁 Файл</button>
         <button class="tab" data-tab="emotions">📊 Эмоции</button>
         <button class="tab" data-tab="pair">💑 Пары</button>
@@ -136,24 +135,6 @@
             <button class="btn" id="sendBtn">📤</button>
         </div>
         <div class="status-text" id="chatStatus"></div>
-    </div>
-
-    <div id="tab-voice" class="tab-content">
-        <div style="text-align:center;margin:12px 0;">
-            <button class="btn" id="recordBtn">🎙 Записать</button>
-            <button class="btn btn-secondary" id="stopBtn" style="display:none;">⏹ Стоп</button>
-        </div>
-        <div class="status-text" id="voiceStatus"></div>
-        <div id="voiceResponse" style="display:none;margin-top:12px;padding:12px;background:#f8faff;border-radius:12px;">
-            <div style="font-weight:600;">📝 Распознано</div>
-            <div id="voiceText"></div>
-            <div style="font-weight:600;margin-top:8px;">🧠 Ответ</div>
-            <div id="voiceResponseContent"></div>
-            <div style="margin-top:8px;">
-                <button class="btn btn-secondary btn-small" onclick="playAudioFromVoice()">🔊 Озвучить</button>
-                <button class="btn btn-secondary btn-small" onclick="stopAudio()">⏹ Стоп</button>
-            </div>
-        </div>
     </div>
 
     <div id="tab-file" class="tab-content">
@@ -228,7 +209,6 @@
                 <select id="voiceMode">
                     <option value="text">📝 Текст + кнопка</option>
                     <option value="auto">🔊 Автоголос</option>
-                    <option value="voice_only">🎙 Только голос</option>
                 </select>
             </div>
             <button class="btn btn-secondary" onclick="saveSettings()">💾 Сохранить</button>
@@ -309,7 +289,6 @@
         <p style="color:#555;margin:12px 0;">Ваш личный голосовой психолог Вероника</p>
         <div class="features">
             <li>💬 Текстовый чат</li>
-            <li>🎙 Голосовой ввод</li>
             <li>📁 Загрузка аудио</li>
             <li>📊 Динамика настроения</li>
             <li>💑 Функция для пар</li>
@@ -317,7 +296,7 @@
         </div>
         <div style="background:#f0f7ff;padding:12px;border-radius:12px;margin:12px 0;">
             <b>🎁 Пробный период: 3 дня</b><br>
-            <span style="font-size:13px;color:#555;">🔊 20 голосовых сессий в день<br>📁 10 загрузок аудио в день<br>💬 Текстовый чат — безлимит</span>
+            <span style="font-size:13px;color:#555;">📁 10 загрузок аудио в день<br>💬 Текстовый чат — безлимит</span>
         </div>
         <div class="legal">
             Продолжая, вы принимаете условия <a href="#" target="_blank">Пользовательского соглашения</a> и <a href="#" target="_blank">Политики конфиденциальности</a>.
@@ -364,7 +343,6 @@
         <p style="color:#555;margin:12px 0;">Вероника — ваш голосовой психолог. Вот что она умеет:</p>
         <div class="features">
             <li>💬 <b>Чат</b> — напишите о том, что вас беспокоит.</li>
-            <li>🎙 <b>Голос</b> — нажмите «Записать» и говорите.</li>
             <li>📁 <b>Файл</b> — загрузите аудиозапись с телефона.</li>
             <li>📊 <b>Эмоции</b> — смотрите динамику настроения в графике или календаре.</li>
             <li>💑 <b>Пары</b> — создайте код и подключите партнёра.</li>
@@ -381,13 +359,11 @@
 const API_BASE = 'https://voice-psychologist.relaxdev.ru';
 let token = localStorage.getItem('access_token');
 let currentAudio = null;
-let currentVoiceAudio = null;
 let currentFileAudio = null;
 let userName = '';
 let tipsData = [];
-let mediaRecorder, audioChunks = [], isRecording = false, stream = null;
 let currentChart = 'line';
-let registeredEmail = ''; // для хранения email при регистрации
+let registeredEmail = '';
 
 // === Проверка авторизации ===
 if (!token) {
@@ -541,21 +517,17 @@ function initApp() {
     loadSupportMessages();
     setInterval(loadLimits, 60000);
     loadLimits();
-    // Обновить подсказки
     const tips = [
         "💬 Напишите о том, что вас беспокоит — Вероника поможет разобраться.",
-        "🎙 Нажмите «Записать» и говорите — Вероника распознает речь и ответит.",
         "📁 Загрузите аудиофайл с телефона — запись с диктофона подойдёт для разбора.",
         "📊 Отслеживайте свои эмоции в графике, календаре или колесе баланса.",
         "💑 Подключите партнёра по коду — вместе работайте над отношениями.",
-        "🔊 Вероника говорит голосом — выберите режим в настройках.",
         "🔥 Скоро приложение появится в ВКонтакте! Следите за новостями."
     ];
     tipsData = tips;
     initCarousel();
     loadSettings();
     loadHistory();
-    // Настройка обработчиков вкладок
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', function() {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -569,7 +541,6 @@ function initApp() {
             if (tabName === 'emotions') { loadEmotions(); }
         });
     });
-    // Чат
     document.getElementById('sendBtn').addEventListener('click', sendMessage);
     document.getElementById('chatInput').addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -577,13 +548,8 @@ function initApp() {
             sendMessage();
         }
     });
-    // Голос
-    document.getElementById('recordBtn').addEventListener('click', startRecording);
-    document.getElementById('stopBtn').addEventListener('click', stopRecording);
-    // Файл
     document.getElementById('fileInput').addEventListener('change', handleFileUpload);
     document.getElementById('fileUploadArea').addEventListener('click', () => document.getElementById('fileInput').click());
-    // Пары
     document.getElementById('pairInviteBtn').addEventListener('click', createPairCode);
     document.getElementById('pairConnectBtn').addEventListener('click', connectPair);
     document.getElementById('pairDisconnectBtn').addEventListener('click', disconnectPair);
@@ -591,7 +557,6 @@ function initApp() {
     document.getElementById('pairHistoryBtn').addEventListener('click', loadPairHistory);
     document.getElementById('pairTaskBtn').addEventListener('click', loadPairTask);
     document.getElementById('pairDynamicsBtn').addEventListener('click', loadPairDynamics);
-    // Приветствие
     document.getElementById('agreeCheckbox').addEventListener('change', function() {
         document.getElementById('welcomeBtn').disabled = !this.checked;
     });
@@ -904,7 +869,6 @@ function stopAudio() {
     }
 }
 
-function playAudioFromVoice() { if (currentVoiceAudio) playAudio(currentVoiceAudio); }
 function playAudioFromFile() { if (currentFileAudio) playAudio(currentFileAudio); }
 
 // === ЧАТ ===
@@ -939,10 +903,7 @@ async function sendMessage() {
         botMsg.className = 'message bot';
         botMsg.textContent = result.response || 'Извините, я не поняла.';
         if (result.audio) {
-            if (mode === 'voice_only') {
-                playAudio(result.audio);
-                botMsg.textContent = '🎙 Вероника ответила голосом';
-            } else if (mode === 'auto') {
+            if (mode === 'auto') {
                 playAudio(result.audio);
             }
             const controls = document.createElement('span');
@@ -966,66 +927,6 @@ async function sendMessage() {
     } catch (e) { document.getElementById('chatStatus').textContent = '❌ ' + e.message; }
     document.getElementById('sendBtn').disabled = false;
     document.getElementById('chatStatus').textContent = '';
-}
-
-// === ГОЛОС ===
-async function startRecording() {
-    try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mimeType = 'audio/webm;codecs=opus';
-        mediaRecorder = new MediaRecorder(stream, { mimeType });
-        audioChunks = [];
-        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-        mediaRecorder.onstop = async () => {
-            const blob = new Blob(audioChunks, { type: mimeType });
-            const fd = new FormData();
-            fd.append('audio', blob, 'recording.webm');
-            document.getElementById('voiceStatus').textContent = '🔄 Отправка...';
-            try {
-                const result = await apiRequest(`${API_BASE}/voice`, {
-                    method: 'POST',
-                    body: fd
-                });
-                if (!result) return;
-                if (result.requires_payment) {
-                    document.getElementById('voiceStatus').textContent = '🔒 Доступ заблокирован.';
-                    document.getElementById('blockedOverlay').classList.add('show');
-                    return;
-                }
-                if (result.error) throw new Error(result.error);
-                document.getElementById('voiceText').textContent = result.recognized_text || '—';
-                document.getElementById('voiceResponseContent').textContent = result.response || '—';
-                if (result.audio) {
-                    currentVoiceAudio = result.audio;
-                    const mode = document.getElementById('voiceMode').value;
-                    if (mode === 'auto' || mode === 'voice_only') {
-                        playAudio(result.audio);
-                    }
-                }
-                document.getElementById('voiceResponse').style.display = 'block';
-                document.getElementById('voiceStatus').textContent = '✅ Готово!';
-                loadLimits();
-                loadEmotions();
-            } catch (e) { document.getElementById('voiceStatus').textContent = '❌ ' + e.message; }
-            document.getElementById('recordBtn').disabled = false;
-            document.getElementById('recordBtn').textContent = '🎙 Записать';
-            document.getElementById('stopBtn').style.display = 'none';
-            if (stream) stream.getTracks().forEach(t => t.stop());
-        };
-        mediaRecorder.start(1000);
-        isRecording = true;
-        document.getElementById('recordBtn').textContent = '⏹ Остановить';
-        document.getElementById('stopBtn').style.display = 'inline-block';
-        document.getElementById('voiceStatus').textContent = '🔴 Запись...';
-        document.getElementById('voiceResponse').style.display = 'none';
-    } catch (e) { document.getElementById('voiceStatus').textContent = '❌ ' + e.message; }
-}
-
-function stopRecording() {
-    if (mediaRecorder && isRecording) {
-        mediaRecorder.stop();
-        isRecording = false;
-    }
 }
 
 // === ФАЙЛ ===
@@ -1052,7 +953,7 @@ async function handleFileUpload(event) {
         if (result.audio) {
             currentFileAudio = result.audio;
             const mode = document.getElementById('voiceMode').value;
-            if (mode === 'auto' || mode === 'voice_only') {
+            if (mode === 'auto') {
                 playAudio(result.audio);
             }
         }
@@ -1297,11 +1198,9 @@ function showInstructions() { document.getElementById('instructionsModal').style
 
 const defaultTips = [
     "💬 Напишите о том, что вас беспокоит — Вероника поможет разобраться.",
-    "🎙 Нажмите «Записать» и говорите — Вероника распознает речь и ответит.",
     "📁 Загрузите аудиофайл с телефона — запись с диктофона подойдёт для разбора.",
     "📊 Отслеживайте свои эмоции в графике, календаре или колесе баланса.",
     "💑 Подключите партнёра по коду — вместе работайте над отношениями.",
-    "🔊 Вероника говорит голосом — выберите режим в настройках.",
     "🔥 Скоро приложение появится в ВКонтакте! Следите за новостями."
 ];
 
