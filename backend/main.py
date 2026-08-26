@@ -44,7 +44,7 @@ init_db()
 # === Аутентификация ===
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkeychangeinproduction")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 10080   # 7 дней
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
