@@ -14,24 +14,38 @@ engine = create_engine(
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def init_db():
-    Base.metadata.create_all(bind=engine)
-    # После создания таблиц применяем миграцию для добавления недостающих колонок
-    apply_migrations()
+def column_exists(conn, table_name, column_name):
+    """Проверяет существование колонки через information_schema (для PostgreSQL)."""
+    # Для SQLite используем другой подход, но у вас PostgreSQL
+    result = conn.execute(
+        text("""
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_name = :table AND column_name = :column
+        """),
+        {"table": table_name, "column": column_name}
+    ).fetchone()
+    return result is not None
 
 def apply_migrations():
     """Добавляет колонки mode, is_live, subject в таблицу sessions, если их нет."""
     with engine.connect() as conn:
-        # Проверяем наличие колонки mode (если её нет – добавляем все три)
-        try:
-            conn.execute(text("SELECT mode FROM sessions LIMIT 1"))
-        except Exception:
-            # Колонки нет – добавляем
+        # Для PostgreSQL – если таблицы sessions нет, создадим её через Base, но она уже должна быть.
+        # Проверяем и добавляем каждую колонку отдельно, без общих транзакций.
+        if not column_exists(conn, "sessions", "mode"):
             conn.execute(text("ALTER TABLE sessions ADD COLUMN mode VARCHAR(20) DEFAULT 'psychologist';"))
+            conn.commit()  # фиксируем сразу, чтобы не было проблем с последующими
+        if not column_exists(conn, "sessions", "is_live"):
             conn.execute(text("ALTER TABLE sessions ADD COLUMN is_live BOOLEAN DEFAULT FALSE;"))
+            conn.commit()
+        if not column_exists(conn, "sessions", "subject"):
             conn.execute(text("ALTER TABLE sessions ADD COLUMN subject VARCHAR(100);"))
             conn.commit()
-            print("✅ Миграция выполнена – добавлены колонки mode, is_live, subject")
+        print("✅ Миграция выполнена (колонки добавлены, если отсутствовали)")
+
+def init_db():
+    Base.metadata.create_all(bind=engine)
+    apply_migrations()
 
 def get_db():
     db = SessionLocal()
