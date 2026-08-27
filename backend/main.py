@@ -10,7 +10,7 @@ from email.mime.text import MIMEText
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, text
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from jose import JWTError, jwt
@@ -47,7 +47,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 43200  # 30 дней
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-# SMTP (для подтверждения email)
+# SMTP
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.yandex.ru")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 SMTP_USER = os.getenv("SMTP_USER", "")
@@ -58,7 +58,7 @@ SMTP_FROM = os.getenv("SMTP_FROM", "")
 YANDEX_API_KEY = os.getenv("YANDEX_API_KEY")
 YANDEX_FOLDER_ID = os.getenv("YANDEX_FOLDER_ID")
 
-# === Модели Pydantic ===
+# === Pydantic модели ===
 class UserCreate(BaseModel):
     email: str
     password: str
@@ -176,7 +176,6 @@ def send_verification_email(email: str, code: str):
 # === ЛИМИТЫ (БД) ===
 DAILY_VOICE_LIMIT = 20
 DAILY_UPLOAD_LIMIT = 10
-TUTOR_DAILY_VOICE_LIMIT = 15  # для наставника отдельно
 
 def get_today():
     return datetime.utcnow().date()
@@ -534,8 +533,36 @@ async def reset_trial(current_user: User = Depends(get_current_user), db = Depen
     db.commit()
     return {"status": "ok"}
 
-# === ПСИХОЛОГ ===
+# === ИСТОРИЯ ПСИХОЛОГА (исправленная через сырой SQL) ===
+@app.get("/history")
+async def get_psychologist_history(current_user: User = Depends(get_current_user), db = Depends(get_db)):
+    try:
+        sessions = db.execute(
+            text("""
+                SELECT id, text, response, mood_score, created_at
+                FROM sessions
+                WHERE user_id = :user_id AND mode = 'psychologist'
+                ORDER BY created_at DESC
+            """),
+            {"user_id": current_user.id}
+        ).fetchall()
+        return {
+            "sessions": [
+                {
+                    "id": s.id,
+                    "text": s.text,
+                    "response": s.response,
+                    "mood_score": s.mood_score,
+                    "date": s.created_at.isoformat()
+                }
+                for s in sessions
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Ошибка в /history: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
+# === ПСИХОЛОГ ===
 @app.post("/psychologist/chat")
 async def psychologist_chat(text: str = Form(...), current_user: User = Depends(get_current_user), db = Depends(get_db)):
     if not has_psychologist_access(current_user):
@@ -570,10 +597,7 @@ async def psychologist_chat(text: str = Form(...), current_user: User = Depends(
         }
     }
 
-# Психолог: голосовой ввод УДАЛЁН (только текст)
-
 # === НАСТАВНИК ===
-
 @app.post("/tutor/chat")
 async def tutor_chat(
     text: str = Form(...),
@@ -731,7 +755,7 @@ async def tutor_upload(
     }
 
 @app.get("/tutor/history")
-async def tutor_history(
+async def get_tutor_history(
     current_user: User = Depends(get_current_user),
     subject: str = None,
     date_from: str = None,
@@ -868,7 +892,6 @@ async def tutor_grammar(
     return {"response": response_text}
 
 # === ПАРЫ ===
-
 @app.post("/pair/invite")
 async def create_pair_code(current_user: User = Depends(get_current_user), db = Depends(get_db)):
     code = str(uuid.uuid4())[:8].upper()
@@ -947,7 +970,6 @@ async def create_pair_task(current_user: User = Depends(get_current_user), db = 
     return {"task": task_text}
 
 # === АДМИНКА ===
-
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "haginu92")
 
 def admin_required(password: str):
@@ -1121,25 +1143,6 @@ async def admin_reply(
     original.reply = reply_text
     db.commit()
     return {"status": "ok", "reply": reply_text}
-
-# === ИСТОРИЯ ПСИХОЛОГА (для обратной совместимости) ===
-@app.get("/history")
-async def get_psychologist_history(current_user: User = Depends(get_current_user), db = Depends(get_db)):
-    sessions = db.query(Session).filter(
-        Session.user_id == current_user.id,
-        Session.mode == "psychologist"
-    ).order_by(desc(Session.created_at)).all()
-    return {
-        "sessions": [
-            {
-                "text": s.text,
-                "response": s.response,
-                "mood_score": s.mood_score,
-                "date": s.created_at.isoformat()
-            }
-            for s in sessions
-        ]
-    }
 
 if __name__ == "__main__":
     import uvicorn
