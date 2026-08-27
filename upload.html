@@ -545,7 +545,7 @@ async function apiRequest(url, options = {}) {
     return response.json();
 }
 
-// === Инициализация приложения (исправленный селектор и проверка) ===
+// === Инициализация приложения ===
 function initApp() {
     checkWelcome();
     loadProfile();
@@ -1207,7 +1207,7 @@ async function sendPsychologistMessage() {
     document.getElementById('psychologistSendBtn').disabled = true;
     document.getElementById('psychologistStatus').textContent = '🔄 Вероника пишет...';
     try {
-        // === ИСПРАВЛЕННЫЙ ЭНДПОИНТ: /psychologist/chat вместо /chat ===
+        // === ИСПРАВЛЕННЫЙ ЭНДПОИНТ ===
         const result = await apiRequest(`${API_BASE}/psychologist/chat`, {
             method: 'POST',
             body: `text=${encodeURIComponent(text)}`
