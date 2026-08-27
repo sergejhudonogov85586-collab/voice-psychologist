@@ -15,8 +15,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def column_exists(conn, table_name, column_name):
-    """Проверяет существование колонки через information_schema (для PostgreSQL)."""
-    # Для SQLite используем другой подход, но у вас PostgreSQL
+    """Проверяет наличие колонки через information_schema (для PostgreSQL)."""
     result = conn.execute(
         text("""
             SELECT 1
@@ -30,11 +29,9 @@ def column_exists(conn, table_name, column_name):
 def apply_migrations():
     """Добавляет колонки mode, is_live, subject в таблицу sessions, если их нет."""
     with engine.connect() as conn:
-        # Для PostgreSQL – если таблицы sessions нет, создадим её через Base, но она уже должна быть.
-        # Проверяем и добавляем каждую колонку отдельно, без общих транзакций.
         if not column_exists(conn, "sessions", "mode"):
             conn.execute(text("ALTER TABLE sessions ADD COLUMN mode VARCHAR(20) DEFAULT 'psychologist';"))
-            conn.commit()  # фиксируем сразу, чтобы не было проблем с последующими
+            conn.commit()
         if not column_exists(conn, "sessions", "is_live"):
             conn.execute(text("ALTER TABLE sessions ADD COLUMN is_live BOOLEAN DEFAULT FALSE;"))
             conn.commit()

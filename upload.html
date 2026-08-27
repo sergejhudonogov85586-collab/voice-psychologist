@@ -566,15 +566,21 @@ function initApp() {
     tipsData = tips;
     initCarousel();
     loadSettings();
-    loadPsychologistHistory();  // ← только эта функция, без дублирующего loadHistory()
-    // Настройка обработчиков вкладок – ИСПРАВЛЕНО
+    loadPsychologistHistory();   // загружаем историю психолога
+    // ===== ИСПРАВЛЕННЫЙ ОБРАБОТЧИК ВКЛАДОК =====
     document.querySelectorAll('.tabs .tab').forEach(tab => {
         tab.addEventListener('click', function() {
             document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
             this.classList.add('active');
             const tabName = this.dataset.tab;
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById('tab-' + tabName).classList.add('active');
+            const target = document.getElementById('tab-' + tabName);
+            if (target) {
+                target.classList.add('active');
+            } else {
+                console.warn('Вкладка не найдена:', tabName);
+                return;
+            }
             if (tabName === 'profile') { loadProfile(); loadTariffs(); }
             if (tabName === 'settings') { loadSettings(); loadPsychologistHistory(); loadSupportMessages(); }
             if (tabName === 'tutor') { loadTutorHistory(); }
