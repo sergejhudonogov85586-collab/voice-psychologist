@@ -545,7 +545,7 @@ async function apiRequest(url, options = {}) {
     return response.json();
 }
 
-// === Инициализация приложения ===
+// === Инициализация приложения (исправленный селектор и проверка) ===
 function initApp() {
     checkWelcome();
     loadProfile();
@@ -566,7 +566,7 @@ function initApp() {
     tipsData = tips;
     initCarousel();
     loadSettings();
-    loadPsychologistHistory();   // загружаем историю психолога
+    loadPsychologistHistory();
     // ===== ИСПРАВЛЕННЫЙ ОБРАБОТЧИК ВКЛАДОК =====
     document.querySelectorAll('.tabs .tab').forEach(tab => {
         tab.addEventListener('click', function() {
@@ -1192,7 +1192,7 @@ function closeMarkModal() {
     document.getElementById('markModal').classList.remove('show');
 }
 
-// === ПСИХОЛОГ: ОТПРАВКА СООБЩЕНИЯ ===
+// ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ ОТПРАВКИ СООБЩЕНИЯ ПСИХОЛОГА =====
 async function sendPsychologistMessage() {
     const input = document.getElementById('psychologistInput');
     const text = input.value.trim();
@@ -1207,6 +1207,7 @@ async function sendPsychologistMessage() {
     document.getElementById('psychologistSendBtn').disabled = true;
     document.getElementById('psychologistStatus').textContent = '🔄 Вероника пишет...';
     try {
+        // === ИСПРАВЛЕННЫЙ ЭНДПОИНТ: /psychologist/chat вместо /chat ===
         const result = await apiRequest(`${API_BASE}/psychologist/chat`, {
             method: 'POST',
             body: `text=${encodeURIComponent(text)}`
