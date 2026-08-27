@@ -566,11 +566,11 @@ function initApp() {
     tipsData = tips;
     initCarousel();
     loadSettings();
-    loadPsychologistHistory();
-    // Настройка обработчиков вкладок
-    document.querySelectorAll('.tab').forEach(tab => {
+    loadPsychologistHistory();  // ← только эта функция, без дублирующего loadHistory()
+    // Настройка обработчиков вкладок – ИСПРАВЛЕНО
+    document.querySelectorAll('.tabs .tab').forEach(tab => {
         tab.addEventListener('click', function() {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
             this.classList.add('active');
             const tabName = this.dataset.tab;
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -959,13 +959,11 @@ async function sendTutorMessage() {
         const botMsg = document.createElement('div');
         botMsg.className = 'message bot';
         botMsg.innerHTML = result.response || 'Извините, я не поняла.';
-        // Кнопка копирования
         const copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
         copyBtn.textContent = '📋 Копировать';
         copyBtn.onclick = () => copyText(result.response);
         botMsg.appendChild(copyBtn);
-        // Кнопка заметки
         const noteBtn = document.createElement('button');
         noteBtn.className = 'note-btn';
         noteBtn.textContent = '📝 Заметка';
@@ -1076,7 +1074,6 @@ async function loadTutorHistory() {
             list.innerHTML = '<div class="status-text">📭 Нет сессий наставника</div>';
             return;
         }
-        // Группируем по датам
         const grouped = data.sessions.reduce((acc, s) => {
             const date = new Date(s.date).toLocaleDateString();
             if (!acc[date]) acc[date] = [];
@@ -1248,7 +1245,6 @@ async function loadEmotions() {
     try {
         const data = await apiRequest(`${API_BASE}/emotions`);
         if (!data) return;
-        // Просто для демонстрации
     } catch (e) {}
 }
 

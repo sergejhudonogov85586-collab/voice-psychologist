@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
-from database import get_db, init_db
+from database import get_db, init_db   # init_db теперь включает миграцию
 from models import (
     User, Session, Emotion, SupportMessage,
     Payment, CarouselTip, SystemSetting, UserLog, UserLimit,
@@ -27,6 +27,19 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+
+app = FastAPI(title="Самопознание")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Инициализация БД и применение миграций при старте
+init_db()
 
 app = FastAPI(title="Самопознание")
 

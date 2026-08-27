@@ -12,23 +12,16 @@ class User(Base):
     phone = Column(String(20), unique=True, index=True, nullable=True)
     password_hash = Column(String(255), nullable=True)
     name = Column(String(255), default="Пользователь")
-    
-    # Подписки психолога
     psychologist_subscription = Column(String(50), default="trial")
     psychologist_end = Column(DateTime, nullable=True)
-    
-    # Подписки наставника
     tutor_subscription = Column(String(50), default="trial")
     tutor_end = Column(DateTime, nullable=True)
     tutor_minutes_balance = Column(Integer, default=0)
-    
     has_seen_welcome = Column(Boolean, default=False)
     partner_code = Column(String(20), nullable=True)
     partner_id = Column(Integer, nullable=True)
     voice_responses_enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Подтверждение email
     is_email_verified = Column(Boolean, default=False)
     verification_code = Column(String(6), nullable=True)
     verification_code_expires = Column(DateTime, nullable=True)
@@ -37,13 +30,13 @@ class Session(Base):
     __tablename__ = "sessions"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, index=True)
-    mode = Column(String(20), default="psychologist")  # psychologist, tutor
+    mode = Column(String(20), default="psychologist")       # добавлено
     text = Column(Text, nullable=True)
     response = Column(Text, nullable=True)
     mood_score = Column(Integer, nullable=True)
     is_pair_session = Column(Boolean, default=False)
-    is_live = Column(Boolean, default=False)
-    subject = Column(String(100), nullable=True)
+    is_live = Column(Boolean, default=False)               # добавлено
+    subject = Column(String(100), nullable=True)           # добавлено
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class Emotion(Base):
