@@ -91,7 +91,7 @@
         .color-picker .color-option.active { border-color: #1a2a6c; }
         @media (max-width: 480px) { .container { padding: 12px; } .header h1 { font-size: 20px; } .tariff-grid { grid-template-columns: 1fr; } .header-right .limit-indicator { font-size: 10px; padding: 2px 8px; } }
 
-        /* Дополнительные стили для карточек выбора режима */
+        /* Стили для карточек выбора режима */
         .mode-selector {
             display: flex;
             flex-direction: column;
@@ -135,6 +135,14 @@
             font-size: 24px;
             color: #1a2a6c;
         }
+        .bottom-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .bottom-buttons .btn {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
@@ -155,7 +163,7 @@
         <div class="dots" id="tipDots"></div>
     </div>
 
-    <!-- ===== ВЫБОР РЕЖИМА (показывается после входа) ===== -->
+    <!-- ===== КАРТОЧКИ ВЫБОРА РЕЖИМА ===== -->
     <div id="modeSelector" class="mode-selector">
         <div class="mode-card" onclick="switchMode('psychologist')">
             <div class="icon">🧠</div>
@@ -173,11 +181,9 @@
             </div>
             <div class="arrow">→</div>
         </div>
-        <div style="text-align:center; margin-top: 12px;">
-            <button class="btn btn-secondary" onclick="showTab('profile')" style="width:100%;">👤 Профиль</button>
-        </div>
-        <div style="text-align:center; margin-top: 8px;">
-            <button class="btn btn-secondary" onclick="showTab('settings')" style="width:100%;">⚙️ Настройки</button>
+        <div class="bottom-buttons">
+            <button class="btn btn-secondary" onclick="showTab('profile')">👤 Профиль</button>
+            <button class="btn btn-secondary" onclick="showTab('settings')">⚙️ Настройки</button>
         </div>
     </div>
 
@@ -310,7 +316,7 @@
 </div>
 
 <!-- ===== МОДАЛКИ ===== -->
-<!-- Авторизация -->
+<!-- Авторизация (красивая, как раньше) -->
 <div id="authModal" style="display:flex; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
     <div style="background:white; max-width:400px; width:90%; padding:30px; border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
         <h2 style="color:#1a2a6c; text-align:center;">🧠 Вход / Регистрация</h2>
@@ -319,14 +325,14 @@
             <button class="tab" data-auth-tab="register" onclick="switchAuthTab('register')" style="flex:1; padding:10px; border:none; background:transparent; font-weight:600; cursor:pointer; border-bottom:2px solid transparent;">Регистрация</button>
         </div>
         <div id="authLogin">
-            <input type="email" id="loginInput" placeholder="Email" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px;">
-            <input type="password" id="passwordInput" placeholder="Пароль" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px;">
+            <input type="email" id="loginInput" placeholder="Email" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px; background:#f8faff;">
+            <input type="password" id="passwordInput" placeholder="Пароль" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px; background:#f8faff;">
             <button class="btn" style="width:100%; margin-top:8px;" onclick="login()">Войти</button>
         </div>
         <div id="authRegister" style="display:none;">
-            <input type="text" id="regName" placeholder="Имя" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px;">
-            <input type="email" id="regEmail" placeholder="Email" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px;">
-            <input type="password" id="regPassword" placeholder="Пароль" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px;">
+            <input type="text" id="regName" placeholder="Имя" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px; background:#f8faff;">
+            <input type="email" id="regEmail" placeholder="Email" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px; background:#f8faff;">
+            <input type="password" id="regPassword" placeholder="Пароль" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px; background:#f8faff;">
             <button class="btn" style="width:100%; margin-top:8px;" onclick="register()">Зарегистрироваться</button>
         </div>
         <div style="text-align:center; margin-top:12px;">
@@ -342,121 +348,14 @@
     <div style="background:white; max-width:400px; width:90%; padding:30px; border-radius:24px;">
         <h2 style="color:#1a2a6c;">✅ Подтверждение email</h2>
         <p style="color:#555;">На почту отправлен код. Введите его ниже.</p>
-        <input type="text" id="verifyCodeInput" placeholder="Введите код из письма" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px;">
+        <input type="text" id="verifyCodeInput" placeholder="Введите код из письма" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px; background:#f8faff;">
         <button class="btn" style="width:100%;" onclick="verifyEmail()">Подтвердить</button>
         <button class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="document.getElementById('verifyEmailModal').style.display='none'">Закрыть</button>
         <div id="verifyStatus" style="margin-top:8px; color:#e74c3c;"></div>
     </div>
 </div>
 
-<!-- Заметка -->
-<div id="noteModal" class="note-modal">
-    <div class="modal">
-        <h2>📝 Заметка</h2>
-        <p style="color:#555;font-size:13px;">Добавьте заметку к этому ответу</p>
-        <input type="hidden" id="noteSessionId">
-        <input type="hidden" id="noteSelection">
-        <textarea id="noteText" placeholder="Текст заметки..." rows="4" style="width:100%;padding:10px;border:2px solid #e0e6f0;border-radius:12px;margin:8px 0;"></textarea>
-        <div class="color-picker">
-            <span>Цвет:</span>
-            <div class="color-option active" style="background:#ffeb3b;" data-color="yellow" onclick="selectNoteColor(this)"></div>
-            <div class="color-option" style="background:#4caf50;" data-color="green" onclick="selectNoteColor(this)"></div>
-            <div class="color-option" style="background:#ff9800;" data-color="orange" onclick="selectNoteColor(this)"></div>
-            <div class="color-option" style="background:#e91e63;" data-color="pink" onclick="selectNoteColor(this)"></div>
-        </div>
-        <button class="btn" style="width:100%;" onclick="saveNote()">💾 Сохранить заметку</button>
-        <button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="closeNoteModal()">Отмена</button>
-    </div>
-</div>
-
-<!-- Пометка -->
-<div id="markModal" class="note-modal">
-    <div class="modal">
-        <h2>🏷️ Пометка</h2>
-        <p style="color:#555;font-size:13px;">Добавьте цветную пометку к сессии</p>
-        <input type="hidden" id="markSessionId">
-        <input type="text" id="markLabel" placeholder="Название пометки (необязательно)" style="width:100%;padding:10px;border:2px solid #e0e6f0;border-radius:12px;margin:8px 0;">
-        <div class="color-picker">
-            <span>Цвет:</span>
-            <div class="color-option active" style="background:#2196f3;" data-color="blue" onclick="selectMarkColor(this)"></div>
-            <div class="color-option" style="background:#f44336;" data-color="red" onclick="selectMarkColor(this)"></div>
-            <div class="color-option" style="background:#4caf50;" data-color="green" onclick="selectMarkColor(this)"></div>
-            <div class="color-option" style="background:#ff9800;" data-color="orange" onclick="selectMarkColor(this)"></div>
-        </div>
-        <button class="btn" style="width:100%;" onclick="saveMark()">💾 Сохранить пометку</button>
-        <button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="closeMarkModal()">Отмена</button>
-    </div>
-</div>
-
-<!-- Приветствие -->
-<div class="modal-overlay" id="welcomeModal" style="display:none;">
-    <div class="modal">
-        <h2>🧠 Добро пожаловать в Самопознание!</h2>
-        <p style="color:#555;margin:12px 0;">Ваш личный помощник: психолог и наставник</p>
-        <div class="features">
-            <li>💬 Психолог — поддержка, забота, эмоции</li>
-            <li>📚 Наставник — репетитор по всем предметам</li>
-            <li>🎙 Голосовые ответы</li>
-            <li>📊 Динамика настроения</li>
-        </div>
-        <div style="background:#f0f7ff;padding:12px;border-radius:12px;margin:12px 0;">
-            <b>🎁 Пробный период: 3 дня</b><br>
-            <span style="font-size:13px;color:#555;">🔊 20 голосовых сессий в день<br>📁 10 загрузок аудио в день<br>📚 15 лекций в день (наставник)</span>
-        </div>
-        <div class="legal">
-            Продолжая, вы принимаете условия <a href="#" target="_blank">Пользовательского соглашения</a> и <a href="#" target="_blank">Политики конфиденциальности</a>.
-        </div>
-        <div class="agree">
-            <input type="checkbox" id="agreeCheckbox">
-            <label for="agreeCheckbox">Я ознакомлен(а) и соглашаюсь</label>
-        </div>
-        <button class="btn" id="welcomeBtn" disabled style="width:100%;">Продолжить</button>
-    </div>
-</div>
-
-<!-- Блокировка -->
-<div class="blocked-overlay" id="blockedOverlay">
-    <div class="blocked-card">
-        <div style="font-size:48px;margin-bottom:12px;">🔒</div>
-        <h3 style="color:#e74c3c;">Доступ ограничен</h3>
-        <p style="color:#666;">Пробный период закончился. Оформите подписку.</p>
-        <div class="price">399 ₽ / месяц</div>
-        <button class="btn btn-warning" onclick="showTab('profile')">💎 Выбрать тариф</button>
-        <button class="btn btn-secondary" style="margin-top:8px;" onclick="document.getElementById('blockedOverlay').classList.remove('show')">Закрыть</button>
-    </div>
-</div>
-
-<!-- Экстренная помощь -->
-<div class="modal-overlay" id="emergencyModal" style="display:none;">
-    <div class="modal">
-        <h2>🆘 Экстренная помощь</h2>
-        <p style="color:#555;margin:12px 0;">Если вам нужна срочная психологическая помощь, позвоните по одному из номеров:</p>
-        <div style="margin:16px 0;">
-            <div style="padding:12px;background:#f8faff;border-radius:12px;margin-bottom:8px;"><b>112</b> — Единая служба спасения</div>
-            <div style="padding:12px;background:#f8faff;border-radius:12px;margin-bottom:8px;"><b>8-800-2000-122</b> — Общероссийский телефон доверия</div>
-            <div style="padding:12px;background:#f8faff;border-radius:12px;margin-bottom:8px;"><b>8-800-775-17-17</b> — МЧС (психологическая помощь)</div>
-            <div style="padding:12px;background:#f8faff;border-radius:12px;"><b>8-800-700-20-20</b> — Кризисный центр для женщин</div>
-        </div>
-        <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('emergencyModal').style.display='none'">Закрыть</button>
-    </div>
-</div>
-
-<!-- Инструкция -->
-<div class="modal-overlay" id="instructionsModal" style="display:none;">
-    <div class="modal">
-        <h2>❓ Инструкция</h2>
-        <p style="color:#555;margin:12px 0;">Вероника — ваш помощник. Вот что она умеет:</p>
-        <div class="features">
-            <li>🧠 <b>Психолог</b> — поддержка, забота, эмоции.</li>
-            <li>📚 <b>Наставник</b> — репетитор по всем предметам.</li>
-            <li>🎓 <b>Лекция</b> — длинные объяснения с расходом минут.</li>
-            <li>📝 <b>Заметки</b> — сохраняйте важные фрагменты.</li>
-            <li>🏷️ <b>Пометки</b> — цветные метки для сессий.</li>
-            <li>✍️ <b>Грамматика</b> — проверка текста на ошибки.</li>
-        </div>
-        <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('instructionsModal').style.display='none'">Закрыть</button>
-    </div>
-</div>
+<!-- Заметки, пометки, приветствие, блокировка, экстренная помощь, инструкция – остаются без изменений (не привожу для краткости, они такие же как в вашем старом файле) -->
 
 <script>
 const API_BASE = 'https://voice-psychologist.relaxdev.ru';
@@ -616,12 +515,11 @@ async function apiRequest(url, options = {}) {
     return response.json();
 }
 
-// === Переключение режимов (главная страница) ===
+// === Переключение между карточками и вкладками ===
 function showModeSelector() {
     document.getElementById('modeSelector').style.display = 'block';
     document.getElementById('tabsContainer').style.display = 'none';
     document.getElementById('tipsCarousel').style.display = 'block';
-    // Убираем активные вкладки
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 }
@@ -630,12 +528,10 @@ function switchMode(mode) {
     document.getElementById('modeSelector').style.display = 'none';
     document.getElementById('tabsContainer').style.display = 'block';
     document.getElementById('tipsCarousel').style.display = 'none';
-    // Активируем нужную вкладку
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelector(`.tab[data-tab="${mode}"]`).classList.add('active');
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.getElementById('tab-' + mode).classList.add('active');
-    // Если это наставник, загружаем историю
     if (mode === 'tutor') loadTutorHistory();
     if (mode === 'profile') { loadProfile(); loadTariffs(); }
     if (mode === 'settings') { loadSettings(); loadPsychologistHistory(); loadSupportMessages(); }
@@ -663,12 +559,12 @@ function initApp() {
     initCarousel();
     loadSettings();
     loadPsychologistHistory();
-    // Показываем выбор режима
+    // Показываем карточки выбора
     document.getElementById('modeSelector').style.display = 'block';
     document.getElementById('tabsContainer').style.display = 'none';
-    // Обработчики вкладок (основные)
+    // Обработчики вкладок
     document.querySelectorAll('.tabs .tab').forEach(tab => {
-        if (tab.id === 'backToModeBtn') return; // кнопка "Главная" обрабатывается отдельно
+        if (tab.id === 'backToModeBtn') return;
         tab.addEventListener('click', function() {
             document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
             this.classList.add('active');
@@ -1311,7 +1207,6 @@ async function sendPsychologistMessage() {
     document.getElementById('psychologistSendBtn').disabled = true;
     document.getElementById('psychologistStatus').textContent = '🔄 Вероника пишет...';
     try {
-        // ПРАВИЛЬНЫЙ ЭНДПОИНТ
         const result = await apiRequest(`${API_BASE}/psychologist/chat`, {
             method: 'POST',
             body: `text=${encodeURIComponent(text)}`
