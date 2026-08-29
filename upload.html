@@ -6,6 +6,7 @@
     <title>Самопознание</title>
     <script src="https://vk.com/js/api/openapi.js?169"></script>
     <style>
+        /* ===== ВАШИ СТИЛИ (БЕЗ ИЗМЕНЕНИЙ) ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f4ff; min-height: 100vh; padding: 16px; }
         .container { max-width: 700px; margin: 0 auto; background: white; border-radius: 24px; padding: 20px; }
@@ -90,59 +91,6 @@
         .color-picker .color-option { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
         .color-picker .color-option.active { border-color: #1a2a6c; }
         @media (max-width: 480px) { .container { padding: 12px; } .header h1 { font-size: 20px; } .tariff-grid { grid-template-columns: 1fr; } .header-right .limit-indicator { font-size: 10px; padding: 2px 8px; } }
-
-        /* Стили для карточек выбора режима */
-        .mode-selector {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            margin: 20px 0;
-        }
-        .mode-card {
-            display: flex;
-            align-items: center;
-            background: #f8faff;
-            border-radius: 16px;
-            padding: 20px;
-            border: 2px solid #e0e6f0;
-            cursor: pointer;
-            transition: all 0.2s;
-            gap: 16px;
-        }
-        .mode-card:hover {
-            border-color: #1a2a6c;
-            background: #f0f4ff;
-        }
-        .mode-card .icon {
-            font-size: 40px;
-            width: 60px;
-            text-align: center;
-        }
-        .mode-card .info {
-            flex: 1;
-        }
-        .mode-card .info h3 {
-            margin: 0;
-            color: #1a2a6c;
-            font-size: 20px;
-        }
-        .mode-card .info p {
-            margin: 4px 0 0;
-            color: #666;
-            font-size: 14px;
-        }
-        .mode-card .arrow {
-            font-size: 24px;
-            color: #1a2a6c;
-        }
-        .bottom-buttons {
-            display: flex;
-            gap: 8px;
-            margin-top: 12px;
-        }
-        .bottom-buttons .btn {
-            flex: 1;
-        }
     </style>
 </head>
 <body>
@@ -154,6 +102,7 @@
             <span class="limit-indicator" id="uploadLimitIndicator">📁 10/10</span>
             <span class="limit-indicator" id="tutorMinutesIndicator">⏱️ 0 мин</span>
             <button class="emergency-btn" onclick="showEmergency()">🆘</button>
+            <button class="btn btn-secondary btn-small" onclick="showTab('profile')">👤</button>
             <button class="btn btn-secondary btn-small" onclick="logout()" id="logoutBtn">🚪</button>
         </div>
     </div>
@@ -163,160 +112,131 @@
         <div class="dots" id="tipDots"></div>
     </div>
 
-    <!-- ===== КАРТОЧКИ ВЫБОРА РЕЖИМА ===== -->
-    <div id="modeSelector" class="mode-selector">
-        <div class="mode-card" onclick="switchMode('psychologist')">
-            <div class="icon">🧠</div>
-            <div class="info">
-                <h3>Психолог</h3>
-                <p>Поддержка, забота, работа с эмоциями</p>
-            </div>
-            <div class="arrow">→</div>
+    <div class="tabs">
+        <button class="tab active" data-tab="psychologist">🧠 Психолог</button>
+        <button class="tab" data-tab="tutor">📚 Наставник</button>
+        <button class="tab" data-tab="profile">👤 Профиль</button>
+        <button class="tab" data-tab="settings">⚙️ Настройки</button>
+    </div>
+
+    <!-- ПСИХОЛОГ -->
+    <div id="tab-psychologist" class="tab-content active">
+        <div class="chat-area" id="psychologistMessages">
+            <div class="message bot">👋 Привет! Я Вероника — ваш психолог. Расскажите, что вас тревожит?</div>
         </div>
-        <div class="mode-card" onclick="switchMode('tutor')">
-            <div class="icon">📚</div>
-            <div class="info">
-                <h3>Наставник</h3>
-                <p>Репетитор по школьным предметам</p>
-            </div>
-            <div class="arrow">→</div>
+        <div class="input-area">
+            <textarea id="psychologistInput" placeholder="Напишите сообщение..." rows="2"></textarea>
+            <button class="btn" id="psychologistSendBtn">📤</button>
         </div>
-        <div class="bottom-buttons">
-            <button class="btn btn-secondary" onclick="showTab('profile')">👤 Профиль</button>
-            <button class="btn btn-secondary" onclick="showTab('settings')">⚙️ Настройки</button>
+        <div class="status-text" id="psychologistStatus"></div>
+    </div>
+
+    <!-- НАСТАВНИК -->
+    <div id="tab-tutor" class="tab-content">
+        <div class="subtabs">
+            <button class="subtab active" data-subtab="tutor-chat">📖 Занятие</button>
+            <button class="subtab" data-subtab="tutor-history">📜 История</button>
+            <button class="subtab" data-subtab="tutor-grammar">✍️ Грамматика</button>
+        </div>
+
+        <div id="subtab-tutor-chat" class="subtab-content active">
+            <div class="tutor-options">
+                <select id="tutorSubject">
+                    <option value="">Выберите предмет</option>
+                    <option value="Математика">Математика</option>
+                    <option value="Физика">Физика</option>
+                    <option value="Химия">Химия</option>
+                    <option value="Биология">Биология</option>
+                    <option value="История">История</option>
+                    <option value="Литература">Литература</option>
+                    <option value="Английский">Английский</option>
+                    <option value="Программирование">Программирование</option>
+                    <option value="Другое">Другое</option>
+                </select>
+                <button id="tutorLiveBtn" class="btn-secondary">🎓 Лекция</button>
+                <span id="tutorLiveStatus" style="font-size:12px;color:#888;display:none;">🔴 Лекция активна</span>
+            </div>
+            <div class="chat-area" id="tutorMessages">
+                <div class="message bot">📚 Привет! Я Вероника — ваш наставник. Задавайте вопросы по любому предмету!</div>
+            </div>
+            <div class="input-area">
+                <textarea id="tutorInput" placeholder="Задайте вопрос..." rows="2"></textarea>
+                <button class="btn" id="tutorSendBtn">📤</button>
+            </div>
+            <div class="status-text" id="tutorStatus"></div>
+        </div>
+
+        <div id="subtab-tutor-history" class="subtab-content">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                <input type="text" id="historySearchSubject" placeholder="Фильтр по предмету" style="flex:1;padding:8px;border:2px solid #e0e6f0;border-radius:12px;">
+                <input type="date" id="historyDateFrom" style="padding:8px;border:2px solid #e0e6f0;border-radius:12px;">
+                <input type="date" id="historyDateTo" style="padding:8px;border:2px solid #e0e6f0;border-radius:12px;">
+                <button class="btn btn-small" onclick="loadTutorHistory()">🔍 Найти</button>
+                <button class="btn btn-secondary btn-small" onclick="clearHistoryFilters()">✖️</button>
+            </div>
+            <div id="historyList"><div class="status-text">Загрузка...</div></div>
+        </div>
+
+        <div id="subtab-tutor-grammar" class="subtab-content">
+            <p style="color:#555;font-size:14px;margin-bottom:8px;">Проверьте свой текст на ошибки. Наставник поможет улучшить грамотность.</p>
+            <div class="chat-area" id="grammarMessages">
+                <div class="message bot">✍️ Напишите текст для проверки грамматики.</div>
+            </div>
+            <div class="input-area">
+                <textarea id="grammarInput" placeholder="Введите текст для проверки..." rows="3"></textarea>
+                <button class="btn" id="grammarSendBtn">📤</button>
+            </div>
+            <div class="status-text" id="grammarStatus"></div>
         </div>
     </div>
 
-    <!-- ===== ВКЛАДКИ (скрыты, пока не выбран режим) ===== -->
-    <div id="tabsContainer" style="display:none;">
-        <div class="tabs">
-            <button class="tab active" data-tab="psychologist">🧠 Психолог</button>
-            <button class="tab" data-tab="tutor">📚 Наставник</button>
-            <button class="tab" data-tab="profile">👤 Профиль</button>
-            <button class="tab" data-tab="settings">⚙️ Настройки</button>
-            <button class="tab" id="backToModeBtn" onclick="showModeSelector()">🏠 Главная</button>
+    <!-- ПРОФИЛЬ -->
+    <div id="tab-profile" class="tab-content">
+        <div class="card" id="profileCard"><div class="status-text">Загрузка...</div></div>
+        <div id="tariffsList" class="tariff-grid"></div>
+        <button class="btn btn-danger" onclick="resetTrial()" style="margin-top:12px;width:100%;">🔄 Сбросить подписку (тест)</button>
+        <div style="margin-top:12px; padding:12px; background:#f8faff; border-radius:12px;">
+            <div class="row"><span class="label">Email</span><span class="value" id="profileEmail">—</span></div>
+            <div class="row"><span class="label">Телефон</span><span class="value" id="profilePhone">—</span></div>
         </div>
+    </div>
 
-        <!-- ПСИХОЛОГ -->
-        <div id="tab-psychologist" class="tab-content active">
-            <div class="chat-area" id="psychologistMessages">
-                <div class="message bot">👋 Привет! Я Вероника — ваш психолог. Расскажите, что вас тревожит?</div>
+    <!-- НАСТРОЙКИ -->
+    <div id="tab-settings" class="tab-content">
+        <div class="card">
+            <h3 style="margin-bottom:12px;">⚙️ Настройки</h3>
+            <div class="settings-group"><label>Имя: <input type="text" id="settingsName" placeholder="Ваше имя"></label></div>
+            <div class="settings-group"><label><input type="checkbox" id="settingsVoice" checked> Голосовые ответы Вероники</label></div>
+            <div class="settings-group">
+                <label>Режим ответа:</label>
+                <select id="voiceMode">
+                    <option value="text">📝 Текст + кнопка</option>
+                    <option value="auto">🔊 Автоголос</option>
+                </select>
             </div>
-            <div class="input-area">
-                <textarea id="psychologistInput" placeholder="Напишите сообщение..." rows="2"></textarea>
-                <button class="btn" id="psychologistSendBtn">📤</button>
-            </div>
-            <div class="status-text" id="psychologistStatus"></div>
-        </div>
-
-        <!-- НАСТАВНИК -->
-        <div id="tab-tutor" class="tab-content">
-            <div class="subtabs">
-                <button class="subtab active" data-subtab="tutor-chat">📖 Занятие</button>
-                <button class="subtab" data-subtab="tutor-history">📜 История</button>
-                <button class="subtab" data-subtab="tutor-grammar">✍️ Грамматика</button>
-            </div>
-
-            <div id="subtab-tutor-chat" class="subtab-content active">
-                <div class="tutor-options">
-                    <select id="tutorSubject">
-                        <option value="">Выберите предмет</option>
-                        <option value="Математика">Математика</option>
-                        <option value="Физика">Физика</option>
-                        <option value="Химия">Химия</option>
-                        <option value="Биология">Биология</option>
-                        <option value="История">История</option>
-                        <option value="Литература">Литература</option>
-                        <option value="Английский">Английский</option>
-                        <option value="Программирование">Программирование</option>
-                        <option value="Другое">Другое</option>
-                    </select>
-                    <button id="tutorLiveBtn" class="btn-secondary">🎓 Лекция</button>
-                    <span id="tutorLiveStatus" style="font-size:12px;color:#888;display:none;">🔴 Лекция активна</span>
-                </div>
-                <div class="chat-area" id="tutorMessages">
-                    <div class="message bot">📚 Привет! Я Вероника — ваш наставник. Задавайте вопросы по любому предмету!</div>
-                </div>
-                <div class="input-area">
-                    <textarea id="tutorInput" placeholder="Задайте вопрос..." rows="2"></textarea>
-                    <button class="btn" id="tutorSendBtn">📤</button>
-                </div>
-                <div class="status-text" id="tutorStatus"></div>
-            </div>
-
-            <div id="subtab-tutor-history" class="subtab-content">
-                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-                    <input type="text" id="historySearchSubject" placeholder="Фильтр по предмету" style="flex:1;padding:8px;border:2px solid #e0e6f0;border-radius:12px;">
-                    <input type="date" id="historyDateFrom" style="padding:8px;border:2px solid #e0e6f0;border-radius:12px;">
-                    <input type="date" id="historyDateTo" style="padding:8px;border:2px solid #e0e6f0;border-radius:12px;">
-                    <button class="btn btn-small" onclick="loadTutorHistory()">🔍 Найти</button>
-                    <button class="btn btn-secondary btn-small" onclick="clearHistoryFilters()">✖️</button>
-                </div>
-                <div id="historyList"><div class="status-text">Загрузка...</div></div>
-            </div>
-
-            <div id="subtab-tutor-grammar" class="subtab-content">
-                <p style="color:#555;font-size:14px;margin-bottom:8px;">Проверьте свой текст на ошибки. Наставник поможет улучшить грамотность.</p>
-                <div class="chat-area" id="grammarMessages">
-                    <div class="message bot">✍️ Напишите текст для проверки грамматики.</div>
-                </div>
-                <div class="input-area">
-                    <textarea id="grammarInput" placeholder="Введите текст для проверки..." rows="3"></textarea>
-                    <button class="btn" id="grammarSendBtn">📤</button>
-                </div>
-                <div class="status-text" id="grammarStatus"></div>
-            </div>
-        </div>
-
-        <!-- ПРОФИЛЬ -->
-        <div id="tab-profile" class="tab-content">
-            <div class="card" id="profileCard"><div class="status-text">Загрузка...</div></div>
-            <div id="tariffsList" class="tariff-grid"></div>
-            <button class="btn btn-danger" onclick="resetTrial()" style="margin-top:12px;width:100%;">🔄 Сбросить подписку (тест)</button>
-            <div style="margin-top:12px; padding:12px; background:#f8faff; border-radius:12px;">
-                <div class="row"><span class="label">Email</span><span class="value" id="profileEmail">—</span></div>
-                <div class="row"><span class="label">Телефон</span><span class="value" id="profilePhone">—</span></div>
-            </div>
-        </div>
-
-        <!-- НАСТРОЙКИ -->
-        <div id="tab-settings" class="tab-content">
+            <button class="btn btn-secondary" onclick="saveSettings()">💾 Сохранить</button>
+            <hr style="margin:16px 0;">
+            <button class="btn btn-danger" onclick="deleteAllData()">🗑️ Стереть все данные</button>
+            <hr style="margin:16px 0;">
             <div class="card">
-                <h3 style="margin-bottom:12px;">⚙️ Настройки</h3>
-                <div class="settings-group"><label>Имя: <input type="text" id="settingsName" placeholder="Ваше имя"></label></div>
-                <div class="settings-group"><label><input type="checkbox" id="settingsVoice" checked> Голосовые ответы Вероники</label></div>
-                <div class="settings-group">
-                    <label>Режим ответа:</label>
-                    <select id="voiceMode">
-                        <option value="text">📝 Текст + кнопка</option>
-                        <option value="auto">🔊 Автоголос</option>
-                    </select>
+                <h4 style="margin-bottom:8px;">💬 Поддержка</h4>
+                <div class="support-chat" id="supportMessages">
+                    <div style="text-align:center;color:#888;font-size:13px;padding:20px;">Нет сообщений</div>
                 </div>
-                <button class="btn btn-secondary" onclick="saveSettings()">💾 Сохранить</button>
-                <hr style="margin:16px 0;">
-                <button class="btn btn-danger" onclick="deleteAllData()">🗑️ Стереть все данные</button>
-                <hr style="margin:16px 0;">
-                <div class="card">
-                    <h4 style="margin-bottom:8px;">💬 Поддержка</h4>
-                    <div class="support-chat" id="supportMessages">
-                        <div style="text-align:center;color:#888;font-size:13px;padding:20px;">Нет сообщений</div>
-                    </div>
-                    <div class="support-input">
-                        <input type="text" id="supportInput" placeholder="Напишите сообщение в поддержку...">
-                        <button class="btn btn-small" onclick="sendSupportMessage()">📤</button>
-                    </div>
+                <div class="support-input">
+                    <input type="text" id="supportInput" placeholder="Напишите сообщение в поддержку...">
+                    <button class="btn btn-small" onclick="sendSupportMessage()">📤</button>
                 </div>
             </div>
-            <div class="card" id="historyContainer">
-                <h3 style="margin-bottom:12px;">📜 История сессий (психолог)</h3>
-                <div id="historyListPsych"><div class="status-text">Загрузка...</div></div>
-            </div>
+        </div>
+        <div class="card" id="historyContainer">
+            <h3 style="margin-bottom:12px;">📜 История сессий (психолог)</h3>
+            <div id="historyListPsych"><div class="status-text">Загрузка...</div></div>
         </div>
     </div>
 </div>
 
-<!-- ===== МОДАЛКИ ===== -->
-<!-- Авторизация (красивая, как раньше) -->
+<!-- МОДАЛКИ (БЕЗ ИЗМЕНЕНИЙ) -->
 <div id="authModal" style="display:flex; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
     <div style="background:white; max-width:400px; width:90%; padding:30px; border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
         <h2 style="color:#1a2a6c; text-align:center;">🧠 Вход / Регистрация</h2>
@@ -343,7 +263,6 @@
     </div>
 </div>
 
-<!-- Подтверждение email -->
 <div id="verifyEmailModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
     <div style="background:white; max-width:400px; width:90%; padding:30px; border-radius:24px;">
         <h2 style="color:#1a2a6c;">✅ Подтверждение email</h2>
@@ -355,7 +274,8 @@
     </div>
 </div>
 
-<!-- Заметки, пометки, приветствие, блокировка, экстренная помощь, инструкция – остаются без изменений (не привожу для краткости, они такие же как в вашем старом файле) -->
+<!-- Остальные модалки (заметки, пометки, приветствие, блокировка, экстренная помощь, инструкция) – без изменений, они идентичны вашим старым -->
+<!-- Для краткости я их не дублирую, они у вас уже есть. -->
 
 <script>
 const API_BASE = 'https://voice-psychologist.relaxdev.ru';
@@ -515,29 +435,7 @@ async function apiRequest(url, options = {}) {
     return response.json();
 }
 
-// === Переключение между карточками и вкладками ===
-function showModeSelector() {
-    document.getElementById('modeSelector').style.display = 'block';
-    document.getElementById('tabsContainer').style.display = 'none';
-    document.getElementById('tipsCarousel').style.display = 'block';
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-}
-
-function switchMode(mode) {
-    document.getElementById('modeSelector').style.display = 'none';
-    document.getElementById('tabsContainer').style.display = 'block';
-    document.getElementById('tipsCarousel').style.display = 'none';
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`.tab[data-tab="${mode}"]`).classList.add('active');
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.getElementById('tab-' + mode).classList.add('active');
-    if (mode === 'tutor') loadTutorHistory();
-    if (mode === 'profile') { loadProfile(); loadTariffs(); }
-    if (mode === 'settings') { loadSettings(); loadPsychologistHistory(); loadSupportMessages(); }
-}
-
-// === Инициализация приложения ===
+// === Инициализация приложения (исправлен селектор вкладок) ===
 function initApp() {
     checkWelcome();
     loadProfile();
@@ -559,12 +457,8 @@ function initApp() {
     initCarousel();
     loadSettings();
     loadPsychologistHistory();
-    // Показываем карточки выбора
-    document.getElementById('modeSelector').style.display = 'block';
-    document.getElementById('tabsContainer').style.display = 'none';
-    // Обработчики вкладок
+    // ===== ИСПРАВЛЕННЫЙ ОБРАБОТЧИК ВКЛАДОК =====
     document.querySelectorAll('.tabs .tab').forEach(tab => {
-        if (tab.id === 'backToModeBtn') return;
         tab.addEventListener('click', function() {
             document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
             this.classList.add('active');
@@ -653,11 +547,7 @@ function initCarousel() {
 
 // === ВКЛАДКИ ===
 function showTab(name) {
-    document.getElementById('modeSelector').style.display = 'none';
-    document.getElementById('tabsContainer').style.display = 'block';
-    document.getElementById('tipsCarousel').style.display = 'none';
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.getElementById('tab-' + name).classList.add('active');
     if (name === 'profile') { loadProfile(); loadTariffs(); }
