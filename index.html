@@ -1,390 +1,708 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Самопознание</title>
-    <script src="https://vk.com/js/api/openapi.js?169"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f4ff; min-height: 100vh; padding: 16px; }
-        .container { max-width: 700px; margin: 0 auto; background: white; border-radius: 24px; padding: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 2px solid #f0f4ff; flex-wrap: wrap; gap: 8px; }
-        .header h1 { font-size: 24px; color: #1a2a6c; }
-        .header-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .header-right .limit-indicator { font-size: 12px; color: #888; background: #f0f4ff; padding: 4px 10px; border-radius: 12px; }
-        .emergency-btn { background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; }
-        .emergency-btn:hover { background: #c0392b; }
-        .btn { padding: 12px 20px; border: none; border-radius: 16px; font-size: 14px; font-weight: 600; cursor: pointer; background: #1a2a6c; color: white; }
-        .btn:disabled { opacity: 0.5; }
-        .btn-secondary { background: #e8edf5; color: #1a2a6c; }
-        .btn-danger { background: #e74c3c; color: white; }
-        .btn-success { background: #27ae60; color: white; }
-        .btn-warning { background: #f39c12; color: white; }
-        .btn-small { padding: 4px 10px; font-size: 12px; border-radius: 12px; }
-        .tabs { display: flex; gap: 6px; margin: 16px 0; background: #f0f4ff; border-radius: 16px; padding: 6px; flex-wrap: wrap; }
-        .tab { flex: 1; padding: 10px; border: none; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer; background: transparent; color: #666; min-width: 50px; text-align: center; }
-        .tab.active { background: white; color: #1a2a6c; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-        .tab-content { display: none; padding-top: 12px; }
-        .tab-content.active { display: block; }
-        .subtabs { display: flex; gap: 6px; margin-bottom: 12px; background: #f0f4ff; border-radius: 12px; padding: 4px; flex-wrap: wrap; }
-        .subtab { padding: 8px 16px; border: none; border-radius: 10px; font-size: 13px; font-weight: 500; cursor: pointer; background: transparent; color: #666; }
-        .subtab.active { background: white; color: #1a2a6c; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-        .subtab-content { display: none; }
-        .subtab-content.active { display: block; }
-        .chat-area { min-height: 250px; max-height: 350px; overflow-y: auto; padding: 12px; background: #f8faff; border-radius: 16px; }
-        .message { padding: 10px 14px; border-radius: 16px; margin-bottom: 8px; max-width: 85%; word-wrap: break-word; line-height: 1.5; font-size: 14px; }
-        .message.user { background: #1a2a6c; color: white; margin-left: auto; border-bottom-right-radius: 4px; }
-        .message.bot { background: #e8edf5; color: #1a2a6c; margin-right: auto; border-bottom-left-radius: 4px; }
-        .message .audio-controls { display: inline-flex; gap: 4px; margin-left: 8px; align-items: center; }
-        .message .copy-btn { background: transparent; border: none; color: #1a2a6c; cursor: pointer; font-size: 12px; padding: 2px 6px; border-radius: 8px; }
-        .message .copy-btn:hover { background: #d0d8e8; }
-        .message .note-btn { background: transparent; border: none; color: #888; cursor: pointer; font-size: 12px; padding: 2px 6px; border-radius: 8px; }
-        .input-area { display: flex; gap: 8px; margin-top: 12px; }
-        .input-area textarea { flex: 1; padding: 12px 16px; border: 2px solid #e0e6f0; border-radius: 16px; font-size: 14px; resize: none; min-height: 46px; font-family: inherit; outline: none; }
-        .input-area textarea:focus { border-color: #1a2a6c; }
-        .status-text { text-align: center; font-size: 13px; color: #888; margin: 6px 0; }
-        .card { background: #f8faff; border-radius: 16px; padding: 16px; margin-bottom: 16px; }
-        .card .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e8edf5; }
-        .card .row:last-child { border-bottom: none; }
-        .card .label { color: #888; font-size: 14px; }
-        .card .value { font-weight: 600; color: #1a2a6c; }
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal { background: white; max-width: 500px; width: 90%; padding: 30px; border-radius: 24px; max-height: 90vh; overflow-y: auto; }
-        .modal h2 { color: #1a2a6c; margin-bottom: 12px; }
-        .modal .legal { font-size: 11px; color: #888; margin: 12px 0; text-align: center; }
-        .modal .agree { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
-        .modal .agree input { width: 18px; height: 18px; }
-        .modal input, .modal select { width: 100%; padding: 10px; margin: 6px 0; border: 2px solid #e0e6f0; border-radius: 12px; font-size: 14px; }
-        .blocked-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 999; }
-        .blocked-overlay.show { display: flex; }
-        .blocked-card { background: white; max-width: 400px; width: 90%; padding: 30px; border-radius: 24px; text-align: center; }
-        .blocked-card .price { font-size: 28px; font-weight: 700; color: #1a2a6c; margin: 12px 0; }
-        .tariff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-        .tariff-card { background: #f8faff; border-radius: 12px; padding: 12px; border: 1px solid #e8edf5; text-align: center; }
-        .tariff-card .price { font-size: 18px; font-weight: 700; color: #1a2a6c; }
-        .file-upload-area { padding: 20px; border: 2px dashed #d0d8e8; border-radius: 16px; background: #f8faff; cursor: pointer; text-align: center; }
-        .file-upload-area input { display: none; }
-        .pair-code { font-size: 28px; font-weight: 700; letter-spacing: 4px; background: #f0f4ff; padding: 12px 20px; border-radius: 12px; display: inline-block; margin: 12px 0; }
-        .carousel { background: #f8faff; border-radius: 16px; padding: 16px; margin: 12px 0; text-align: center; min-height: 70px; border: 1px solid #e8edf5; }
-        .carousel .text { font-size: 14px; color: #555; line-height: 1.6; }
-        .carousel .dots { margin-top: 8px; display: flex; justify-content: center; gap: 6px; }
-        .carousel .dot { width: 8px; height: 8px; border-radius: 50%; background: #d0d8e8; cursor: pointer; }
-        .carousel .dot.active { background: #1a2a6c; }
-        .history-item { padding: 10px 12px; background: #f8faff; border-radius: 12px; margin: 6px 0; border-left: 3px solid #1a2a6c; }
-        .history-item .date { font-size: 11px; color: #888; }
-        .history-item .text { font-size: 14px; color: #1a2a6c; }
-        .history-item .mark-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; color: white; margin-left: 6px; }
-        .settings-group { margin: 12px 0; }
-        .settings-group label { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #e8edf5; }
-        .settings-group input[type="text"] { flex: 1; padding: 8px 12px; border: 2px solid #e0e6f0; border-radius: 8px; font-size: 14px; outline: none; }
-        .settings-group input[type="checkbox"] { width: 20px; height: 20px; }
-        .settings-group select { width: 100%; padding: 10px; border-radius: 12px; border: 2px solid #e0e6f0; font-size: 14px; margin-top: 6px; background: white; }
-        .tutor-options { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-        .tutor-options select, .tutor-options button { padding: 8px 12px; border-radius: 12px; border: 2px solid #e0e6f0; font-size: 13px; background: white; cursor: pointer; }
-        .tutor-options .btn-active { background: #1a2a6c; color: white; border-color: #1a2a6c; }
-        .note-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1001; align-items: center; justify-content: center; }
-        .note-modal.show { display: flex; }
-        .note-modal .modal { max-width: 400px; }
-        .color-picker { display: flex; gap: 8px; margin: 8px 0; }
-        .color-picker .color-option { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
-        .color-picker .color-option.active { border-color: #1a2a6c; }
-        @media (max-width: 480px) { .container { padding: 12px; } .header h1 { font-size: 20px; } .tariff-grid { grid-template-columns: 1fr; } .header-right .limit-indicator { font-size: 10px; padding: 2px 8px; } }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Самопознание</title>
+  <script src="https://vk.com/js/api/openapi.js?169"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(145deg, #f5f9ff 0%, #e6edf7 100%);
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      max-width: 700px;
+      width: 100%;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 36px;
+      padding: 24px 20px;
+      box-shadow: 0 20px 60px rgba(26, 42, 108, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 2px solid rgba(26, 42, 108, 0.08);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .header h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: #1a2a6c;
+      letter-spacing: -0.5px;
+    }
+    .header-right {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .header-right .limit-indicator {
+      font-size: 11px;
+      color: #4a5b8a;
+      background: rgba(26, 42, 108, 0.06);
+      padding: 4px 12px;
+      border-radius: 30px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .emergency-btn {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 30px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .emergency-btn:hover { background: #c0392b; transform: scale(1.02); }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 30px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #1a2a6c;
+      color: white;
+      transition: 0.2s;
+      box-shadow: 0 4px 12px rgba(26, 42, 108, 0.2);
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(26, 42, 108, 0.3); }
+    .btn:disabled { opacity: 0.5; transform: none; }
+    .btn-secondary { background: rgba(26, 42, 108, 0.06); color: #1a2a6c; box-shadow: none; }
+    .btn-secondary:hover { background: rgba(26, 42, 108, 0.12); }
+    .btn-danger { background: #e74c3c; box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3); }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-success { background: #27ae60; box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3); }
+    .btn-warning { background: #f39c12; box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3); }
+    .btn-small { padding: 6px 14px; font-size: 12px; border-radius: 20px; }
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin: 20px 0 16px;
+      background: rgba(26, 42, 108, 0.04);
+      border-radius: 30px;
+      padding: 4px;
+      flex-wrap: wrap;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 26px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: transparent;
+      color: #5a6b8a;
+      transition: 0.2s;
+      min-width: 60px;
+      text-align: center;
+    }
+    .tab.active {
+      background: white;
+      color: #1a2a6c;
+      box-shadow: 0 4px 12px rgba(26, 42, 108, 0.08);
+    }
+    .tab:hover:not(.active) { background: rgba(255,255,255,0.5); }
+    .tab-content { display: none; padding-top: 12px; animation: fade 0.2s; }
+    .tab-content.active { display: block; }
+    @keyframes fade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+    .subtabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+      background: rgba(26, 42, 108, 0.04);
+      border-radius: 30px;
+      padding: 4px;
+      flex-wrap: wrap;
+    }
+    .subtab {
+      padding: 8px 18px;
+      border: none;
+      border-radius: 26px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      background: transparent;
+      color: #5a6b8a;
+      transition: 0.2s;
+    }
+    .subtab.active {
+      background: white;
+      color: #1a2a6c;
+      box-shadow: 0 4px 12px rgba(26, 42, 108, 0.08);
+    }
+    .subtab-content { display: none; animation: fade 0.2s; }
+    .subtab-content.active { display: block; }
+
+    .chat-area {
+      min-height: 250px;
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 16px;
+      background: rgba(248, 250, 255, 0.7);
+      border-radius: 20px;
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,0.6);
+    }
+    .message {
+      padding: 12px 18px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+      max-width: 85%;
+      word-wrap: break-word;
+      line-height: 1.6;
+      font-size: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }
+    .message.user {
+      background: #1a2a6c;
+      color: white;
+      margin-left: auto;
+      border-bottom-right-radius: 4px;
+    }
+    .message.bot {
+      background: white;
+      color: #1a2a6c;
+      margin-right: auto;
+      border-bottom-left-radius: 4px;
+      border: 1px solid rgba(26,42,108,0.06);
+    }
+    .message .audio-controls { display: inline-flex; gap: 4px; margin-left: 8px; align-items: center; }
+    .message .copy-btn, .message .note-btn {
+      background: transparent;
+      border: none;
+      color: #1a2a6c;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 30px;
+      transition: 0.1s;
+      margin-left: 6px;
+    }
+    .message .copy-btn:hover, .message .note-btn:hover { background: rgba(26,42,108,0.06); }
+
+    .input-area {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .input-area textarea {
+      flex: 1;
+      padding: 14px 18px;
+      border: 2px solid rgba(26, 42, 108, 0.08);
+      border-radius: 30px;
+      font-size: 15px;
+      resize: none;
+      min-height: 52px;
+      font-family: inherit;
+      outline: none;
+      background: white;
+      transition: 0.2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }
+    .input-area textarea:focus { border-color: #1a2a6c; box-shadow: 0 0 0 4px rgba(26,42,108,0.06); }
+    .status-text {
+      text-align: center;
+      font-size: 13px;
+      color: #8892a8;
+      margin: 8px 0;
+    }
+    .card {
+      background: rgba(248, 250, 255, 0.7);
+      backdrop-filter: blur(4px);
+      border-radius: 20px;
+      padding: 18px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(255,255,255,0.6);
+    }
+    .card .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(26,42,108,0.04);
+    }
+    .card .row:last-child { border-bottom: none; }
+    .card .label { color: #6a7b9a; font-size: 14px; }
+    .card .value { font-weight: 600; color: #1a2a6c; }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .modal {
+      background: white;
+      max-width: 480px;
+      width: 100%;
+      padding: 32px;
+      border-radius: 32px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .modal h2 { color: #1a2a6c; margin-bottom: 16px; font-weight: 700; }
+    .modal input, .modal select, .modal textarea {
+      width: 100%;
+      padding: 14px 18px;
+      margin: 8px 0 12px;
+      border: 2px solid rgba(26,42,108,0.08);
+      border-radius: 30px;
+      font-size: 15px;
+      background: white;
+      outline: none;
+      transition: 0.2s;
+    }
+    .modal input:focus, .modal select:focus, .modal textarea:focus {
+      border-color: #1a2a6c;
+      box-shadow: 0 0 0 4px rgba(26,42,108,0.06);
+    }
+    .modal .legal { font-size: 12px; color: #8892a8; margin: 12px 0; text-align: center; }
+    .modal .agree { display: flex; align-items: center; gap: 10px; margin: 12px 0; }
+    .modal .agree input { width: 20px; height: 20px; margin: 0; }
+
+    .tariff-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 10px 0;
+    }
+    .tariff-card {
+      background: rgba(248, 250, 255, 0.7);
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+      border: 1px solid rgba(26,42,108,0.06);
+      transition: 0.2s;
+    }
+    .tariff-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(26,42,108,0.06); }
+    .tariff-card .price { font-size: 22px; font-weight: 700; color: #1a2a6c; }
+    .tariff-card button { margin-top: 8px; width: 100%; padding: 10px; font-size: 13px; border-radius: 30px; }
+
+    .history-item {
+      padding: 12px 16px;
+      background: rgba(248, 250, 255, 0.7);
+      border-radius: 16px;
+      margin: 6px 0;
+      border-left: 4px solid #1a2a6c;
+      backdrop-filter: blur(2px);
+    }
+    .history-item .date { font-size: 12px; color: #8892a8; }
+    .history-item .text { font-size: 14px; color: #1a2a6c; margin-top: 4px; }
+    .history-item .mark-badge { display: inline-block; padding: 2px 10px; border-radius: 30px; font-size: 10px; color: white; margin-left: 6px; }
+
+    .settings-group { margin: 12px 0; }
+    .settings-group label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(26,42,108,0.04);
+    }
+    .settings-group input[type="text"] { flex: 1; padding: 10px 16px; border: 2px solid rgba(26,42,108,0.08); border-radius: 30px; font-size: 14px; outline: none; background: white; }
+    .settings-group input[type="checkbox"] { width: 22px; height: 22px; }
+    .settings-group select { width: 100%; padding: 12px 16px; border-radius: 30px; border: 2px solid rgba(26,42,108,0.08); font-size: 14px; background: white; }
+
+    .tutor-options { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+    .tutor-options select, .tutor-options button {
+      padding: 10px 16px;
+      border-radius: 30px;
+      border: 2px solid rgba(26,42,108,0.08);
+      font-size: 14px;
+      background: white;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .tutor-options .btn-active { background: #1a2a6c; color: white; border-color: #1a2a6c; }
+
+    .color-picker { display: flex; gap: 10px; margin: 8px 0; flex-wrap: wrap; }
+    .color-picker .color-option {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: 0.1s;
+    }
+    .color-picker .color-option.active { border-color: #1a2a6c; transform: scale(1.1); }
+
+    .support-chat { max-height: 200px; overflow-y: auto; padding: 8px; background: rgba(248,250,255,0.5); border-radius: 16px; }
+    .support-input { display: flex; gap: 8px; margin-top: 8px; }
+    .support-input input { flex: 1; padding: 12px 16px; border: 2px solid rgba(26,42,108,0.08); border-radius: 30px; font-size: 14px; outline: none; }
+
+    .blocked-overlay {
+      position: fixed; top:0; left:0; right:0; bottom:0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      padding: 20px;
+    }
+    .blocked-overlay.show { display: flex; }
+    .blocked-card {
+      background: white;
+      max-width: 400px;
+      width: 100%;
+      padding: 32px;
+      border-radius: 32px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .blocked-card .price { font-size: 32px; font-weight: 700; color: #1a2a6c; margin: 12px 0; }
+
+    .pair-code { font-size: 28px; font-weight: 700; letter-spacing: 4px; background: rgba(26,42,108,0.06); padding: 12px 24px; border-radius: 30px; display: inline-block; margin: 12px 0; }
+
+    .carousel {
+      background: rgba(248, 250, 255, 0.7);
+      backdrop-filter: blur(4px);
+      border-radius: 20px;
+      padding: 16px 20px;
+      margin: 12px 0;
+      text-align: center;
+      min-height: 70px;
+      border: 1px solid rgba(255,255,255,0.6);
+    }
+    .carousel .text { font-size: 15px; color: #1a2a6c; line-height: 1.6; }
+    .carousel .dots { margin-top: 8px; display: flex; justify-content: center; gap: 6px; }
+    .carousel .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(26,42,108,0.2); cursor: pointer; transition: 0.2s; }
+    .carousel .dot.active { background: #1a2a6c; }
+
+    .note-modal {
+      display: none;
+      position: fixed;
+      top:0; left:0; right:0; bottom:0;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(8px);
+      z-index: 1001;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .note-modal.show { display: flex; }
+    .note-modal .modal { max-width: 420px; }
+
+    @media (max-width: 480px) {
+      .container { padding: 16px; }
+      .header h1 { font-size: 22px; }
+      .tariff-grid { grid-template-columns: 1fr; }
+      .header-right .limit-indicator { font-size: 10px; padding: 2px 10px; }
+      .modal { padding: 24px; }
+    }
+  </style>
 </head>
 <body>
 <div class="container">
-    <div class="header">
-        <h1>🧠 Самопознание</h1>
-        <div class="header-right">
-            <span class="limit-indicator" id="voiceLimitIndicator">🔊 20/20</span>
-            <span class="limit-indicator" id="uploadLimitIndicator">📁 10/10</span>
-            <span class="limit-indicator" id="tutorMinutesIndicator">⏱️ 0 мин</span>
-            <button class="emergency-btn" onclick="showEmergency()">🆘</button>
-            <button class="btn btn-secondary btn-small" onclick="showTab('profile')">👤</button>
-            <button class="btn btn-secondary btn-small" onclick="logout()" id="logoutBtn">🚪</button>
-        </div>
+  <div class="header">
+    <h1>🧠 Самопознание</h1>
+    <div class="header-right">
+      <span class="limit-indicator" id="voiceLimitIndicator">🔊 20/20</span>
+      <span class="limit-indicator" id="uploadLimitIndicator">📁 10/10</span>
+      <span class="limit-indicator" id="tutorMinutesIndicator">⏱️ 0 мин</span>
+      <button class="emergency-btn" onclick="showEmergency()">🆘</button>
+      <button class="btn btn-secondary btn-small" onclick="showTab('profile')">👤</button>
+      <button class="btn btn-secondary btn-small" onclick="logout()" id="logoutBtn">🚪</button>
+    </div>
+  </div>
+
+  <div class="carousel" id="tipsCarousel">
+    <div class="text" id="tipText">💡 Выберите режим: психолог или наставник</div>
+    <div class="dots" id="tipDots"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="psychologist">🧠 Психолог</button>
+    <button class="tab" data-tab="tutor">📚 Наставник</button>
+    <button class="tab" data-tab="profile">👤 Профиль</button>
+    <button class="tab" data-tab="settings">⚙️ Настройки</button>
+  </div>
+
+  <!-- Психолог -->
+  <div id="tab-psychologist" class="tab-content active">
+    <div class="chat-area" id="psychologistMessages">
+      <div class="message bot">👋 Привет! Я Вероника — ваш психолог. Расскажите, что вас тревожит?</div>
+    </div>
+    <div class="input-area">
+      <textarea id="psychologistInput" placeholder="Напишите сообщение..." rows="2"></textarea>
+      <button class="btn" id="psychologistSendBtn">📤</button>
+    </div>
+    <div class="status-text" id="psychologistStatus"></div>
+  </div>
+
+  <!-- Наставник -->
+  <div id="tab-tutor" class="tab-content">
+    <div class="subtabs">
+      <button class="subtab active" data-subtab="tutor-chat">📖 Занятие</button>
+      <button class="subtab" data-subtab="tutor-history">📜 История</button>
+      <button class="subtab" data-subtab="tutor-grammar">✍️ Грамматика</button>
     </div>
 
-    <div class="carousel" id="tipsCarousel">
-        <div class="text" id="tipText">💡 Выберите режим: психолог или наставник</div>
-        <div class="dots" id="tipDots"></div>
+    <div id="subtab-tutor-chat" class="subtab-content active">
+      <div class="tutor-options">
+        <select id="tutorSubject">
+          <option value="">Выберите предмет</option>
+          <option value="Математика">Математика</option>
+          <option value="Физика">Физика</option>
+          <option value="Химия">Химия</option>
+          <option value="Биология">Биология</option>
+          <option value="История">История</option>
+          <option value="Литература">Литература</option>
+          <option value="Английский">Английский</option>
+          <option value="Программирование">Программирование</option>
+          <option value="Другое">Другое</option>
+        </select>
+        <button id="tutorLiveBtn" class="btn-secondary">🎓 Лекция</button>
+        <span id="tutorLiveStatus" style="font-size:12px;color:#8892a8;display:none;">🔴 Лекция активна</span>
+      </div>
+      <div class="chat-area" id="tutorMessages">
+        <div class="message bot">📚 Привет! Я Вероника — ваш наставник. Задавайте вопросы по любому предмету!</div>
+      </div>
+      <div class="input-area">
+        <textarea id="tutorInput" placeholder="Задайте вопрос..." rows="2"></textarea>
+        <button class="btn" id="tutorSendBtn">📤</button>
+      </div>
+      <div class="status-text" id="tutorStatus"></div>
     </div>
 
-    <div class="tabs">
-        <button class="tab active" data-tab="psychologist">🧠 Психолог</button>
-        <button class="tab" data-tab="tutor">📚 Наставник</button>
-        <button class="tab" data-tab="profile">👤 Профиль</button>
-        <button class="tab" data-tab="settings">⚙️ Настройки</button>
+    <div id="subtab-tutor-history" class="subtab-content">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <input type="text" id="historySearchSubject" placeholder="Фильтр по предмету" style="flex:1;padding:10px 16px;border:2px solid rgba(26,42,108,0.08);border-radius:30px;font-size:14px;outline:none;">
+        <input type="date" id="historyDateFrom" style="padding:10px 16px;border:2px solid rgba(26,42,108,0.08);border-radius:30px;font-size:14px;outline:none;">
+        <input type="date" id="historyDateTo" style="padding:10px 16px;border:2px solid rgba(26,42,108,0.08);border-radius:30px;font-size:14px;outline:none;">
+        <button class="btn btn-small" onclick="loadTutorHistory()">🔍 Найти</button>
+        <button class="btn btn-secondary btn-small" onclick="clearHistoryFilters()">✖️</button>
+      </div>
+      <div id="historyList"><div class="status-text">Загрузка...</div></div>
     </div>
 
-    <!-- ==================== ПСИХОЛОГ ==================== -->
-    <div id="tab-psychologist" class="tab-content active">
-        <div class="chat-area" id="psychologistMessages">
-            <div class="message bot">👋 Привет! Я Вероника — ваш психолог. Расскажите, что вас тревожит?</div>
-        </div>
-        <div class="input-area">
-            <textarea id="psychologistInput" placeholder="Напишите сообщение..." rows="2"></textarea>
-            <button class="btn" id="psychologistSendBtn">📤</button>
-        </div>
-        <div class="status-text" id="psychologistStatus"></div>
+    <div id="subtab-tutor-grammar" class="subtab-content">
+      <p style="color:#5a6b8a;font-size:14px;margin-bottom:8px;">Проверьте свой текст на ошибки. Наставник поможет улучшить грамотность.</p>
+      <div class="chat-area" id="grammarMessages">
+        <div class="message bot">✍️ Напишите текст для проверки грамматики.</div>
+      </div>
+      <div class="input-area">
+        <textarea id="grammarInput" placeholder="Введите текст для проверки..." rows="3"></textarea>
+        <button class="btn" id="grammarSendBtn">📤</button>
+      </div>
+      <div class="status-text" id="grammarStatus"></div>
     </div>
+  </div>
 
-    <!-- ==================== НАСТАВНИК ==================== -->
-    <div id="tab-tutor" class="tab-content">
-        <div class="subtabs">
-            <button class="subtab active" data-subtab="tutor-chat">📖 Занятие</button>
-            <button class="subtab" data-subtab="tutor-history">📜 История</button>
-            <button class="subtab" data-subtab="tutor-grammar">✍️ Грамматика</button>
-        </div>
-
-        <!-- Занятие -->
-        <div id="subtab-tutor-chat" class="subtab-content active">
-            <div class="tutor-options">
-                <select id="tutorSubject">
-                    <option value="">Выберите предмет</option>
-                    <option value="Математика">Математика</option>
-                    <option value="Физика">Физика</option>
-                    <option value="Химия">Химия</option>
-                    <option value="Биология">Биология</option>
-                    <option value="История">История</option>
-                    <option value="Литература">Литература</option>
-                    <option value="Английский">Английский</option>
-                    <option value="Программирование">Программирование</option>
-                    <option value="Другое">Другое</option>
-                </select>
-                <button id="tutorLiveBtn" class="btn-secondary">🎓 Лекция</button>
-                <span id="tutorLiveStatus" style="font-size:12px;color:#888;display:none;">🔴 Лекция активна</span>
-            </div>
-            <div class="chat-area" id="tutorMessages">
-                <div class="message bot">📚 Привет! Я Вероника — ваш наставник. Задавайте вопросы по любому предмету!</div>
-            </div>
-            <div class="input-area">
-                <textarea id="tutorInput" placeholder="Задайте вопрос..." rows="2"></textarea>
-                <button class="btn" id="tutorSendBtn">📤</button>
-            </div>
-            <div class="status-text" id="tutorStatus"></div>
-        </div>
-
-        <!-- История -->
-        <div id="subtab-tutor-history" class="subtab-content">
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-                <input type="text" id="historySearchSubject" placeholder="Фильтр по предмету" style="flex:1;padding:8px;border:2px solid #e0e6f0;border-radius:12px;">
-                <input type="date" id="historyDateFrom" style="padding:8px;border:2px solid #e0e6f0;border-radius:12px;">
-                <input type="date" id="historyDateTo" style="padding:8px;border:2px solid #e0e6f0;border-radius:12px;">
-                <button class="btn btn-small" onclick="loadTutorHistory()">🔍 Найти</button>
-                <button class="btn btn-secondary btn-small" onclick="clearHistoryFilters()">✖️</button>
-            </div>
-            <div id="historyList"><div class="status-text">Загрузка...</div></div>
-        </div>
-
-        <!-- Грамматика -->
-        <div id="subtab-tutor-grammar" class="subtab-content">
-            <p style="color:#555;font-size:14px;margin-bottom:8px;">Проверьте свой текст на ошибки. Наставник поможет улучшить грамотность.</p>
-            <div class="chat-area" id="grammarMessages">
-                <div class="message bot">✍️ Напишите текст для проверки грамматики.</div>
-            </div>
-            <div class="input-area">
-                <textarea id="grammarInput" placeholder="Введите текст для проверки..." rows="3"></textarea>
-                <button class="btn" id="grammarSendBtn">📤</button>
-            </div>
-            <div class="status-text" id="grammarStatus"></div>
-        </div>
+  <!-- Профиль -->
+  <div id="tab-profile" class="tab-content">
+    <div class="card" id="profileCard"><div class="status-text">Загрузка...</div></div>
+    <div id="tariffsList" class="tariff-grid"></div>
+    <button class="btn btn-danger" onclick="resetTrial()" style="margin-top:12px;width:100%;">🔄 Сбросить подписку (тест)</button>
+    <div style="margin-top:12px; padding:12px; background:rgba(248,250,255,0.5); border-radius:20px;">
+      <div class="row"><span class="label">Email</span><span class="value" id="profileEmail">—</span></div>
+      <div class="row"><span class="label">Телефон</span><span class="value" id="profilePhone">—</span></div>
     </div>
+  </div>
 
-    <!-- ==================== ПРОФИЛЬ ==================== -->
-    <div id="tab-profile" class="tab-content">
-        <div class="card" id="profileCard"><div class="status-text">Загрузка...</div></div>
-        <div id="tariffsList" class="tariff-grid"></div>
-        <button class="btn btn-danger" onclick="resetTrial()" style="margin-top:12px;width:100%;">🔄 Сбросить подписку (тест)</button>
-        <div style="margin-top:12px; padding:12px; background:#f8faff; border-radius:12px;">
-            <div class="row"><span class="label">Email</span><span class="value" id="profileEmail">—</span></div>
-            <div class="row"><span class="label">Телефон</span><span class="value" id="profilePhone">—</span></div>
+  <!-- Настройки -->
+  <div id="tab-settings" class="tab-content">
+    <div class="card">
+      <h3 style="margin-bottom:12px;">⚙️ Настройки</h3>
+      <div class="settings-group"><label>Имя: <input type="text" id="settingsName" placeholder="Ваше имя"></label></div>
+      <div class="settings-group"><label><input type="checkbox" id="settingsVoice" checked> Голосовые ответы Вероники</label></div>
+      <div class="settings-group">
+        <label>Режим ответа:</label>
+        <select id="voiceMode">
+          <option value="text">📝 Текст + кнопка</option>
+          <option value="auto">🔊 Автоголос</option>
+        </select>
+      </div>
+      <button class="btn btn-secondary" onclick="saveSettings()">💾 Сохранить</button>
+      <hr style="margin:16px 0; border-color:rgba(26,42,108,0.06);">
+      <button class="btn btn-danger" onclick="deleteAllData()">🗑️ Стереть все данные</button>
+      <hr style="margin:16px 0; border-color:rgba(26,42,108,0.06);">
+      <div class="card">
+        <h4 style="margin-bottom:8px;">💬 Поддержка</h4>
+        <div class="support-chat" id="supportMessages">
+          <div style="text-align:center;color:#8892a8;font-size:13px;padding:20px;">Нет сообщений</div>
         </div>
+        <div class="support-input">
+          <input type="text" id="supportInput" placeholder="Напишите сообщение в поддержку...">
+          <button class="btn btn-small" onclick="sendSupportMessage()">📤</button>
+        </div>
+      </div>
     </div>
-
-    <!-- ==================== НАСТРОЙКИ ==================== -->
-    <div id="tab-settings" class="tab-content">
-        <div class="card">
-            <h3 style="margin-bottom:12px;">⚙️ Настройки</h3>
-            <div class="settings-group"><label>Имя: <input type="text" id="settingsName" placeholder="Ваше имя"></label></div>
-            <div class="settings-group"><label><input type="checkbox" id="settingsVoice" checked> Голосовые ответы Вероники</label></div>
-            <div class="settings-group">
-                <label>Режим ответа:</label>
-                <select id="voiceMode">
-                    <option value="text">📝 Текст + кнопка</option>
-                    <option value="auto">🔊 Автоголос</option>
-                </select>
-            </div>
-            <button class="btn btn-secondary" onclick="saveSettings()">💾 Сохранить</button>
-            <hr style="margin:16px 0;">
-            <button class="btn btn-danger" onclick="deleteAllData()">🗑️ Стереть все данные</button>
-            <hr style="margin:16px 0;">
-            <div class="card">
-                <h4 style="margin-bottom:8px;">💬 Поддержка</h4>
-                <div class="support-chat" id="supportMessages">
-                    <div style="text-align:center;color:#888;font-size:13px;padding:20px;">Нет сообщений</div>
-                </div>
-                <div class="support-input">
-                    <input type="text" id="supportInput" placeholder="Напишите сообщение в поддержку...">
-                    <button class="btn btn-small" onclick="sendSupportMessage()">📤</button>
-                </div>
-            </div>
-        </div>
-        <div class="card" id="historyContainer">
-            <h3 style="margin-bottom:12px;">📜 История сессий (психолог)</h3>
-            <div id="historyListPsych"><div class="status-text">Загрузка...</div></div>
-        </div>
+    <div class="card">
+      <h3 style="margin-bottom:12px;">📜 История сессий (психолог)</h3>
+      <div id="historyListPsych"><div class="status-text">Загрузка...</div></div>
     </div>
+  </div>
 </div>
 
-<!-- ==================== МОДАЛКИ ==================== -->
 <!-- Модалка авторизации -->
-<div id="authModal" style="display:flex; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
-    <div style="background:white; max-width:400px; width:90%; padding:30px; border-radius:24px;">
-        <h2 style="color:#1a2a6c;">🧠 Вход / Регистрация</h2>
-        <div style="display:flex; gap:0; margin:12px 0; border-bottom:2px solid #e0e6f0;">
-            <button class="tab active" data-auth-tab="login" onclick="switchAuthTab('login')" style="flex:1; padding:8px; border:none; background:transparent; font-weight:600; cursor:pointer; border-bottom:2px solid #1a2a6c; color:#1a2a6c;">Вход</button>
-            <button class="tab" data-auth-tab="register" onclick="switchAuthTab('register')" style="flex:1; padding:8px; border:none; background:transparent; font-weight:600; cursor:pointer; border-bottom:2px solid transparent;">Регистрация</button>
-        </div>
-        <div id="authLogin">
-            <input type="text" id="loginInput" placeholder="Email">
-            <input type="password" id="passwordInput" placeholder="Пароль">
-            <button class="btn" style="width:100%;" onclick="login()">Войти</button>
-        </div>
-        <div id="authRegister" style="display:none;">
-            <input type="text" id="regName" placeholder="Имя">
-            <input type="email" id="regEmail" placeholder="Email">
-            <input type="password" id="regPassword" placeholder="Пароль">
-            <button class="btn" style="width:100%;" onclick="register()">Зарегистрироваться</button>
-        </div>
-        <div style="text-align:center; margin-top:12px;">
-            <button class="btn btn-secondary" style="width:100%;" onclick="vkLogin()">Войти через ВКонтакте</button>
-        </div>
-        <div style="margin-top:8px; text-align:center; color:#888; font-size:13px;">Продолжая, вы принимаете условия использования</div>
-        <button class="btn btn-secondary" style="width:100%; margin-top:12px;" onclick="document.getElementById('authModal').style.display='none'">Закрыть</button>
+<div id="authModal" style="display:flex; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(8px); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:white; max-width:420px; width:100%; padding:32px; border-radius:32px; box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+    <h2 style="color:#1a2a6c;">🧠 Вход / Регистрация</h2>
+    <div style="display:flex; gap:0; margin:12px 0; border-bottom:2px solid rgba(26,42,108,0.08);">
+      <button class="tab active" data-auth-tab="login" onclick="switchAuthTab('login')" style="flex:1; padding:8px; border:none; background:transparent; font-weight:600; cursor:pointer; border-bottom:2px solid #1a2a6c; color:#1a2a6c;">Вход</button>
+      <button class="tab" data-auth-tab="register" onclick="switchAuthTab('register')" style="flex:1; padding:8px; border:none; background:transparent; font-weight:600; cursor:pointer; border-bottom:2px solid transparent;">Регистрация</button>
     </div>
+    <div id="authLogin">
+      <input type="text" id="loginInput" placeholder="Email" style="width:100%; padding:14px 18px; margin:6px 0; border:2px solid rgba(26,42,108,0.08); border-radius:30px; font-size:15px; outline:none;">
+      <input type="password" id="passwordInput" placeholder="Пароль" style="width:100%; padding:14px 18px; margin:6px 0; border:2px solid rgba(26,42,108,0.08); border-radius:30px; font-size:15px; outline:none;">
+      <button class="btn" style="width:100%; margin-top:8px;" onclick="login()">Войти</button>
+    </div>
+    <div id="authRegister" style="display:none;">
+      <input type="text" id="regName" placeholder="Имя" style="width:100%; padding:14px 18px; margin:6px 0; border:2px solid rgba(26,42,108,0.08); border-radius:30px; font-size:15px; outline:none;">
+      <input type="email" id="regEmail" placeholder="Email" style="width:100%; padding:14px 18px; margin:6px 0; border:2px solid rgba(26,42,108,0.08); border-radius:30px; font-size:15px; outline:none;">
+      <input type="password" id="regPassword" placeholder="Пароль" style="width:100%; padding:14px 18px; margin:6px 0; border:2px solid rgba(26,42,108,0.08); border-radius:30px; font-size:15px; outline:none;">
+      <button class="btn" style="width:100%; margin-top:8px;" onclick="register()">Зарегистрироваться</button>
+    </div>
+    <div style="text-align:center; margin-top:12px;">
+      <button class="btn btn-secondary" style="width:100%;" onclick="vkLogin()">Войти через ВКонтакте</button>
+    </div>
+    <div style="margin-top:8px; text-align:center; color:#8892a8; font-size:13px;">Продолжая, вы принимаете условия использования</div>
+    <button class="btn btn-secondary" style="width:100%; margin-top:12px;" onclick="document.getElementById('authModal').style.display='none'">Закрыть</button>
+  </div>
 </div>
 
 <!-- Модалка подтверждения email -->
-<div id="verifyEmailModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
-    <div style="background:white; max-width:400px; width:90%; padding:30px; border-radius:24px;">
-        <h2 style="color:#1a2a6c;">✅ Подтверждение email</h2>
-        <p style="color:#555;">На почту отправлен код. Введите его ниже.</p>
-        <input type="text" id="verifyCodeInput" placeholder="Введите код из письма" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px;">
-        <button class="btn" style="width:100%;" onclick="verifyEmail()">Подтвердить</button>
-        <button class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="document.getElementById('verifyEmailModal').style.display='none'">Закрыть</button>
-        <div id="verifyStatus" style="margin-top:8px; color:#e74c3c;"></div>
-    </div>
+<div id="verifyEmailModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(8px); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:white; max-width:420px; width:100%; padding:32px; border-radius:32px;">
+    <h2 style="color:#1a2a6c;">✅ Подтверждение email</h2>
+    <p style="color:#5a6b8a;">На почту отправлен код. Введите его ниже.</p>
+    <input type="text" id="verifyCodeInput" placeholder="Введите код из письма" style="width:100%; padding:14px 18px; margin:8px 0; border:2px solid rgba(26,42,108,0.08); border-radius:30px; font-size:15px; outline:none;">
+    <button class="btn" style="width:100%;" onclick="verifyEmail()">Подтвердить</button>
+    <button class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="document.getElementById('verifyEmailModal').style.display='none'">Закрыть</button>
+    <div id="verifyStatus" style="margin-top:8px; color:#e74c3c;"></div>
+  </div>
 </div>
 
 <!-- Модалка заметки -->
 <div id="noteModal" class="note-modal">
-    <div class="modal">
-        <h2>📝 Заметка</h2>
-        <p style="color:#555;font-size:13px;">Добавьте заметку к этому ответу</p>
-        <input type="hidden" id="noteSessionId">
-        <input type="hidden" id="noteSelection">
-        <textarea id="noteText" placeholder="Текст заметки..." rows="4" style="width:100%;padding:10px;border:2px solid #e0e6f0;border-radius:12px;margin:8px 0;"></textarea>
-        <div class="color-picker">
-            <span>Цвет:</span>
-            <div class="color-option active" style="background:#ffeb3b;" data-color="yellow" onclick="selectNoteColor(this)"></div>
-            <div class="color-option" style="background:#4caf50;" data-color="green" onclick="selectNoteColor(this)"></div>
-            <div class="color-option" style="background:#ff9800;" data-color="orange" onclick="selectNoteColor(this)"></div>
-            <div class="color-option" style="background:#e91e63;" data-color="pink" onclick="selectNoteColor(this)"></div>
-        </div>
-        <button class="btn" style="width:100%;" onclick="saveNote()">💾 Сохранить заметку</button>
-        <button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="closeNoteModal()">Отмена</button>
+  <div class="modal">
+    <h2>📝 Заметка</h2>
+    <p style="color:#5a6b8a;font-size:13px;">Добавьте заметку к этому ответу</p>
+    <input type="hidden" id="noteSessionId">
+    <input type="hidden" id="noteSelection">
+    <textarea id="noteText" placeholder="Текст заметки..." rows="4" style="width:100%;padding:14px;border:2px solid rgba(26,42,108,0.08);border-radius:20px;margin:8px 0;font-size:14px;outline:none;"></textarea>
+    <div class="color-picker">
+      <span style="color:#5a6b8a;">Цвет:</span>
+      <div class="color-option active" style="background:#ffeb3b;" data-color="yellow" onclick="selectNoteColor(this)"></div>
+      <div class="color-option" style="background:#4caf50;" data-color="green" onclick="selectNoteColor(this)"></div>
+      <div class="color-option" style="background:#ff9800;" data-color="orange" onclick="selectNoteColor(this)"></div>
+      <div class="color-option" style="background:#e91e63;" data-color="pink" onclick="selectNoteColor(this)"></div>
     </div>
+    <button class="btn" style="width:100%;" onclick="saveNote()">💾 Сохранить заметку</button>
+    <button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="closeNoteModal()">Отмена</button>
+  </div>
 </div>
 
 <!-- Модалка пометки -->
 <div id="markModal" class="note-modal">
-    <div class="modal">
-        <h2>🏷️ Пометка</h2>
-        <p style="color:#555;font-size:13px;">Добавьте цветную пометку к сессии</p>
-        <input type="hidden" id="markSessionId">
-        <input type="text" id="markLabel" placeholder="Название пометки (необязательно)" style="width:100%;padding:10px;border:2px solid #e0e6f0;border-radius:12px;margin:8px 0;">
-        <div class="color-picker">
-            <span>Цвет:</span>
-            <div class="color-option active" style="background:#2196f3;" data-color="blue" onclick="selectMarkColor(this)"></div>
-            <div class="color-option" style="background:#f44336;" data-color="red" onclick="selectMarkColor(this)"></div>
-            <div class="color-option" style="background:#4caf50;" data-color="green" onclick="selectMarkColor(this)"></div>
-            <div class="color-option" style="background:#ff9800;" data-color="orange" onclick="selectMarkColor(this)"></div>
-        </div>
-        <button class="btn" style="width:100%;" onclick="saveMark()">💾 Сохранить пометку</button>
-        <button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="closeMarkModal()">Отмена</button>
+  <div class="modal">
+    <h2>🏷️ Пометка</h2>
+    <p style="color:#5a6b8a;font-size:13px;">Добавьте цветную пометку к сессии</p>
+    <input type="hidden" id="markSessionId">
+    <input type="text" id="markLabel" placeholder="Название пометки (необязательно)" style="width:100%;padding:14px;border:2px solid rgba(26,42,108,0.08);border-radius:20px;margin:8px 0;font-size:14px;outline:none;">
+    <div class="color-picker">
+      <span style="color:#5a6b8a;">Цвет:</span>
+      <div class="color-option active" style="background:#2196f3;" data-color="blue" onclick="selectMarkColor(this)"></div>
+      <div class="color-option" style="background:#f44336;" data-color="red" onclick="selectMarkColor(this)"></div>
+      <div class="color-option" style="background:#4caf50;" data-color="green" onclick="selectMarkColor(this)"></div>
+      <div class="color-option" style="background:#ff9800;" data-color="orange" onclick="selectMarkColor(this)"></div>
     </div>
+    <button class="btn" style="width:100%;" onclick="saveMark()">💾 Сохранить пометку</button>
+    <button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="closeMarkModal()">Отмена</button>
+  </div>
 </div>
 
 <!-- Приветственное модальное окно -->
 <div class="modal-overlay" id="welcomeModal" style="display:none;">
-    <div class="modal">
-        <h2>🧠 Добро пожаловать в Самопознание!</h2>
-        <p style="color:#555;margin:12px 0;">Ваш личный помощник: психолог и наставник</p>
-        <div class="features">
-            <li>💬 Психолог — поддержка, забота, эмоции</li>
-            <li>📚 Наставник — репетитор по всем предметам</li>
-            <li>🎙 Голосовые ответы</li>
-            <li>📊 Динамика настроения</li>
-        </div>
-        <div style="background:#f0f7ff;padding:12px;border-radius:12px;margin:12px 0;">
-            <b>🎁 Пробный период: 3 дня</b><br>
-            <span style="font-size:13px;color:#555;">🔊 20 голосовых сессий в день<br>📁 10 загрузок аудио в день<br>📚 15 лекций в день (наставник)</span>
-        </div>
-        <div class="legal">
-            Продолжая, вы принимаете условия <a href="#" target="_blank">Пользовательского соглашения</a> и <a href="#" target="_blank">Политики конфиденциальности</a>.
-        </div>
-        <div class="agree">
-            <input type="checkbox" id="agreeCheckbox">
-            <label for="agreeCheckbox">Я ознакомлен(а) и соглашаюсь</label>
-        </div>
-        <button class="btn" id="welcomeBtn" disabled style="width:100%;">Продолжить</button>
+  <div class="modal">
+    <h2>🧠 Добро пожаловать в Самопознание!</h2>
+    <p style="color:#5a6b8a;margin:12px 0;">Ваш личный помощник: психолог и наставник</p>
+    <ul style="list-style:none;padding:0;margin:12px 0;">
+      <li style="padding:6px 0;">💬 Психолог — поддержка, забота, эмоции</li>
+      <li style="padding:6px 0;">📚 Наставник — репетитор по всем предметам</li>
+      <li style="padding:6px 0;">🎙 Голосовые ответы</li>
+      <li style="padding:6px 0;">📊 Динамика настроения</li>
+    </ul>
+    <div style="background:rgba(26,42,108,0.04);padding:16px;border-radius:20px;margin:12px 0;">
+      <b>🎁 Пробный период: 3 дня</b><br>
+      <span style="font-size:13px;color:#5a6b8a;">🔊 20 голосовых сессий в день<br>📁 10 загрузок аудио в день<br>📚 15 лекций в день (наставник)</span>
     </div>
+    <div class="legal">
+      Продолжая, вы принимаете условия <a href="#" target="_blank">Пользовательского соглашения</a> и <a href="#" target="_blank">Политики конфиденциальности</a>.
+    </div>
+    <div class="agree">
+      <input type="checkbox" id="agreeCheckbox">
+      <label for="agreeCheckbox">Я ознакомлен(а) и соглашаюсь</label>
+    </div>
+    <button class="btn" id="welcomeBtn" disabled style="width:100%;">Продолжить</button>
+  </div>
 </div>
 
 <!-- Блокировка -->
 <div class="blocked-overlay" id="blockedOverlay">
-    <div class="blocked-card">
-        <div style="font-size:48px;margin-bottom:12px;">🔒</div>
-        <h3 style="color:#e74c3c;">Доступ ограничен</h3>
-        <p style="color:#666;">Пробный период закончился. Оформите подписку.</p>
-        <div class="price">399 ₽ / месяц</div>
-        <button class="btn btn-warning" onclick="showTab('profile')">💎 Выбрать тариф</button>
-        <button class="btn btn-secondary" style="margin-top:8px;" onclick="document.getElementById('blockedOverlay').classList.remove('show')">Закрыть</button>
-    </div>
+  <div class="blocked-card">
+    <div style="font-size:48px;margin-bottom:12px;">🔒</div>
+    <h3 style="color:#e74c3c;">Доступ ограничен</h3>
+    <p style="color:#5a6b8a;">Пробный период закончился. Оформите подписку.</p>
+    <div class="price">399 ₽ / месяц</div>
+    <button class="btn btn-warning" onclick="showTab('profile')">💎 Выбрать тариф</button>
+    <button class="btn btn-secondary" style="margin-top:8px;" onclick="document.getElementById('blockedOverlay').classList.remove('show')">Закрыть</button>
+  </div>
 </div>
 
 <!-- Экстренная помощь -->
 <div class="modal-overlay" id="emergencyModal" style="display:none;">
-    <div class="modal">
-        <h2>🆘 Экстренная помощь</h2>
-        <p style="color:#555;margin:12px 0;">Если вам нужна срочная психологическая помощь, позвоните по одному из номеров:</p>
-        <div style="margin:16px 0;">
-            <div style="padding:12px;background:#f8faff;border-radius:12px;margin-bottom:8px;"><b>112</b> — Единая служба спасения</div>
-            <div style="padding:12px;background:#f8faff;border-radius:12px;margin-bottom:8px;"><b>8-800-2000-122</b> — Общероссийский телефон доверия</div>
-            <div style="padding:12px;background:#f8faff;border-radius:12px;margin-bottom:8px;"><b>8-800-775-17-17</b> — МЧС (психологическая помощь)</div>
-            <div style="padding:12px;background:#f8faff;border-radius:12px;"><b>8-800-700-20-20</b> — Кризисный центр для женщин</div>
-        </div>
-        <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('emergencyModal').style.display='none'">Закрыть</button>
+  <div class="modal">
+    <h2>🆘 Экстренная помощь</h2>
+    <p style="color:#5a6b8a;margin:12px 0;">Если вам нужна срочная психологическая помощь, позвоните по одному из номеров:</p>
+    <div style="margin:16px 0;">
+      <div style="padding:12px;background:rgba(248,250,255,0.5);border-radius:16px;margin-bottom:8px;"><b>112</b> — Единая служба спасения</div>
+      <div style="padding:12px;background:rgba(248,250,255,0.5);border-radius:16px;margin-bottom:8px;"><b>8-800-2000-122</b> — Общероссийский телефон доверия</div>
+      <div style="padding:12px;background:rgba(248,250,255,0.5);border-radius:16px;margin-bottom:8px;"><b>8-800-775-17-17</b> — МЧС (психологическая помощь)</div>
+      <div style="padding:12px;background:rgba(248,250,255,0.5);border-radius:16px;"><b>8-800-700-20-20</b> — Кризисный центр для женщин</div>
     </div>
+    <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('emergencyModal').style.display='none'">Закрыть</button>
+  </div>
 </div>
 
 <!-- Инструкция -->
 <div class="modal-overlay" id="instructionsModal" style="display:none;">
-    <div class="modal">
-        <h2>❓ Инструкция</h2>
-        <p style="color:#555;margin:12px 0;">Вероника — ваш помощник. Вот что она умеет:</p>
-        <div class="features">
-            <li>🧠 <b>Психолог</b> — поддержка, забота, эмоции.</li>
-            <li>📚 <b>Наставник</b> — репетитор по всем предметам.</li>
-            <li>🎓 <b>Лекция</b> — длинные объяснения с расходом минут.</li>
-            <li>📝 <b>Заметки</b> — сохраняйте важные фрагменты.</li>
-            <li>🏷️ <b>Пометки</b> — цветные метки для сессий.</li>
-            <li>✍️ <b>Грамматика</b> — проверка текста на ошибки.</li>
-        </div>
-        <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('instructionsModal').style.display='none'">Закрыть</button>
-    </div>
+  <div class="modal">
+    <h2>❓ Инструкция</h2>
+    <p style="color:#5a6b8a;margin:12px 0;">Вероника — ваш помощник. Вот что она умеет:</p>
+    <ul style="list-style:none;padding:0;margin:12px 0;">
+      <li style="padding:6px 0;">🧠 <b>Психолог</b> — поддержка, забота, эмоции.</li>
+      <li style="padding:6px 0;">📚 <b>Наставник</b> — репетитор по всем предметам.</li>
+      <li style="padding:6px 0;">🎓 <b>Лекция</b> — длинные объяснения с расходом минут.</li>
+      <li style="padding:6px 0;">📝 <b>Заметки</b> — сохраняйте важные фрагменты.</li>
+      <li style="padding:6px 0;">🏷️ <b>Пометки</b> — цветные метки для сессий.</li>
+      <li style="padding:6px 0;">✍️ <b>Грамматика</b> — проверка текста на ошибки.</li>
+    </ul>
+    <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('instructionsModal').style.display='none'">Закрыть</button>
+  </div>
 </div>
 
 <script>
@@ -779,7 +1097,7 @@ async function loadTariffs() {
         const tariffs = data.tariffs;
         let html = '';
         for (const [key, tariff] of Object.entries(tariffs)) {
-            html += `<div class="tariff-card"><div class="price">${tariff.price} ₽</div><div>${tariff.name}</div><div style="font-size:12px;color:#888;">${tariff.period}</div><button class="btn" style="width:100%;margin-top:6px;font-size:12px;padding:8px;" onclick="subscribe('${key}')">Выбрать</button></div>`;
+            html += `<div class="tariff-card"><div class="price">${tariff.price} ₽</div><div>${tariff.name}</div><div style="font-size:12px;color:#8892a8;">${tariff.period}</div><button class="btn" style="width:100%;margin-top:6px;font-size:12px;padding:8px;" onclick="subscribe('${key}')">Выбрать</button></div>`;
         }
         container.innerHTML = html;
     } catch (e) { container.innerHTML = '<div class="status-text">❌ Ошибка</div>'; }
@@ -873,7 +1191,7 @@ async function loadSupportMessages() {
         const data = await apiRequest(`${API_BASE}/support/messages`);
         if (!data) return;
         if (!data.messages || data.messages.length === 0) {
-            container.innerHTML = '<div style="text-align:center;color:#888;font-size:13px;padding:20px;">Нет сообщений</div>';
+            container.innerHTML = '<div style="text-align:center;color:#8892a8;font-size:13px;padding:20px;">Нет сообщений</div>';
             return;
         }
         container.innerHTML = data.messages.map(m => `
@@ -884,7 +1202,7 @@ async function loadSupportMessages() {
             </div>
         `).join('');
         container.scrollTop = container.scrollHeight;
-    } catch (e) { container.innerHTML = '<div style="text-align:center;color:#888;font-size:13px;padding:20px;">Ошибка загрузки</div>'; }
+    } catch (e) { container.innerHTML = '<div style="text-align:center;color:#8892a8;font-size:13px;padding:20px;">Ошибка загрузки</div>'; }
 }
 
 async function sendSupportMessage() {
@@ -917,7 +1235,7 @@ async function loadPsychologistHistory() {
                 <div class="date">${new Date(s.date).toLocaleString()}</div>
                 <div class="text"><b>Вы:</b> ${s.text || '—'}</div>
                 <div class="text"><b>Вероника:</b> ${s.response ? s.response.substring(0, 100) + '...' : '—'}</div>
-                ${s.mood_score ? `<div class="text" style="color:#888;font-size:12px;">Настроение: ${s.mood_score}/10</div>` : ''}
+                ${s.mood_score ? `<div class="text" style="color:#8892a8;font-size:12px;">Настроение: ${s.mood_score}/10</div>` : ''}
             </div>
         `).join('');
     } catch (e) { container.innerHTML = '<div class="status-text">❌ Ошибка</div>'; }
