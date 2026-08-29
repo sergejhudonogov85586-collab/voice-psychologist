@@ -13,11 +13,8 @@ class User(Base):
     password_hash = Column(String(255), nullable=True)
     name = Column(String(255), default="Пользователь")
     
-    # Подписки психолога
     psychologist_subscription = Column(String(50), default="trial")
     psychologist_end = Column(DateTime, nullable=True)
-    
-    # Подписки наставника
     tutor_subscription = Column(String(50), default="trial")
     tutor_end = Column(DateTime, nullable=True)
     tutor_minutes_balance = Column(Integer, default=0)
@@ -28,7 +25,6 @@ class User(Base):
     voice_responses_enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # Подтверждение email
     is_email_verified = Column(Boolean, default=False)
     verification_code = Column(String(6), nullable=True)
     verification_code_expires = Column(DateTime, nullable=True)
@@ -37,7 +33,7 @@ class Session(Base):
     __tablename__ = "sessions"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, index=True)
-    mode = Column(String(20), default="psychologist")  # psychologist, tutor
+    mode = Column(String(20), default="psychologist")
     text = Column(Text, nullable=True)
     response = Column(Text, nullable=True)
     mood_score = Column(Integer, nullable=True)

@@ -10,7 +10,7 @@ from email.mime.text import MIMEText
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import desc, func, text
+from sqlalchemy import desc, func, text   # <-- ВАЖНО: импорт text
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from jose import JWTError, jwt
@@ -42,19 +42,17 @@ init_db()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkeychangeinproduction")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 43200  # 30 дней
+ACCESS_TOKEN_EXPIRE_MINUTES = 43200
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-# SMTP
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.yandex.ru")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 SMTP_FROM = os.getenv("SMTP_FROM", "")
 
-# Yandex API
 YANDEX_API_KEY = os.getenv("YANDEX_API_KEY")
 YANDEX_FOLDER_ID = os.getenv("YANDEX_FOLDER_ID")
 
@@ -162,8 +160,6 @@ def send_verification_email(email: str, code: str):
         msg['Subject'] = 'Подтверждение email'
         msg['From'] = SMTP_FROM
         msg['To'] = email
-
-        logger.info(f"Попытка отправить письмо на {email} через {SMTP_HOST}:{SMTP_PORT}")
         with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.sendmail(SMTP_FROM, [email], msg.as_string())
@@ -300,7 +296,6 @@ async def register(user_data: UserCreate, db = Depends(get_db)):
         existing = db.query(User).filter(User.email == user_data.email).first()
         if existing:
             raise HTTPException(status_code=400, detail="Email уже зарегистрирован")
-        
         hashed = get_password_hash(user_data.password)
         user = User(
             email=user_data.email,
@@ -316,12 +311,10 @@ async def register(user_data: UserCreate, db = Depends(get_db)):
         db.commit()
         db.refresh(user)
         logger.info(f"Пользователь создан с id={user.id}")
-
         code = str(random.randint(100000, 999999))
         user.verification_code = code
         user.verification_code_expires = datetime.utcnow() + timedelta(minutes=10)
         db.commit()
-
         send_verification_email(user.email, code)
         return {"message": "Код подтверждения отправлен на почту", "email": user.email}
     except HTTPException:
