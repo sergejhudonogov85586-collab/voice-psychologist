@@ -2,1311 +2,744 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Самопознание</title>
-    <script src="https://vk.com/js/api/openapi.js?169"></script>
     <style>
-        /* все стили из предыдущего финального ответа с карточками – я их не менял */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f4ff; min-height: 100vh; padding: 16px; }
-        .container { max-width: 700px; margin: 0 auto; background: white; border-radius: 24px; padding: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 2px solid #f0f4ff; flex-wrap: wrap; gap: 8px; }
-        .header h1 { font-size: 24px; color: #1a2a6c; }
-        .header-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .header-right .limit-indicator { font-size: 12px; color: #888; background: #f0f4ff; padding: 4px 10px; border-radius: 12px; }
-        .emergency-btn { background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; }
-        .emergency-btn:hover { background: #c0392b; }
-        .btn { padding: 12px 20px; border: none; border-radius: 16px; font-size: 14px; font-weight: 600; cursor: pointer; background: #1a2a6c; color: white; }
-        .btn:disabled { opacity: 0.5; }
-        .btn-secondary { background: #e8edf5; color: #1a2a6c; }
-        .btn-danger { background: #e74c3c; color: white; }
-        .btn-success { background: #27ae60; color: white; }
-        .btn-warning { background: #f39c12; color: white; }
-        .btn-small { padding: 4px 10px; font-size: 12px; border-radius: 12px; }
-        .tabs { display: flex; gap: 6px; margin: 16px 0; background: #f0f4ff; border-radius: 16px; padding: 6px; flex-wrap: wrap; }
-        .tab { flex: 1; padding: 10px; border: none; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer; background: transparent; color: #666; min-width: 50px; text-align: center; }
-        .tab.active { background: white; color: #1a2a6c; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-        .tab-content { display: none; padding-top: 12px; }
+        /* === Общие стили === */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7fc; color: #333; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 20px; }
+        h1 { text-align: center; color: #4a6fa5; margin-bottom: 20px; }
+        .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #e0e7ef; padding-bottom: 10px; }
+        .tab-btn { padding: 10px 16px; background: #eef2f7; border: none; border-radius: 30px; cursor: pointer; font-weight: 600; color: #4a6fa5; transition: 0.2s; }
+        .tab-btn.active { background: #4a6fa5; color: white; }
+        .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .subtabs { display: flex; gap: 6px; margin-bottom: 12px; background: #f0f4ff; border-radius: 12px; padding: 4px; flex-wrap: wrap; }
-        .subtab { padding: 8px 16px; border: none; border-radius: 10px; font-size: 13px; font-weight: 500; cursor: pointer; background: transparent; color: #666; }
-        .subtab.active { background: white; color: #1a2a6c; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-        .subtab-content { display: none; }
-        .subtab-content.active { display: block; }
-        .chat-area { min-height: 250px; max-height: 350px; overflow-y: auto; padding: 12px; background: #f8faff; border-radius: 16px; }
-        .message { padding: 10px 14px; border-radius: 16px; margin-bottom: 8px; max-width: 85%; word-wrap: break-word; line-height: 1.5; font-size: 14px; }
-        .message.user { background: #1a2a6c; color: white; margin-left: auto; border-bottom-right-radius: 4px; }
-        .message.bot { background: #e8edf5; color: #1a2a6c; margin-right: auto; border-bottom-left-radius: 4px; }
-        .message .audio-controls { display: inline-flex; gap: 4px; margin-left: 8px; align-items: center; }
-        .message .copy-btn { background: transparent; border: none; color: #1a2a6c; cursor: pointer; font-size: 12px; padding: 2px 6px; border-radius: 8px; }
-        .message .copy-btn:hover { background: #d0d8e8; }
-        .message .note-btn { background: transparent; border: none; color: #888; cursor: pointer; font-size: 12px; padding: 2px 6px; border-radius: 8px; }
-        .input-area { display: flex; gap: 8px; margin-top: 12px; }
-        .input-area textarea { flex: 1; padding: 12px 16px; border: 2px solid #e0e6f0; border-radius: 16px; font-size: 14px; resize: none; min-height: 46px; font-family: inherit; outline: none; }
-        .input-area textarea:focus { border-color: #1a2a6c; }
-        .status-text { text-align: center; font-size: 13px; color: #888; margin: 6px 0; }
-        .card { background: #f8faff; border-radius: 16px; padding: 16px; margin-bottom: 16px; }
-        .card .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e8edf5; }
-        .card .row:last-child { border-bottom: none; }
-        .card .label { color: #888; font-size: 14px; }
-        .card .value { font-weight: 600; color: #1a2a6c; }
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .modal { background: white; max-width: 500px; width: 90%; padding: 30px; border-radius: 24px; max-height: 90vh; overflow-y: auto; }
-        .modal h2 { color: #1a2a6c; margin-bottom: 12px; }
-        .modal .legal { font-size: 11px; color: #888; margin: 12px 0; text-align: center; }
-        .modal .agree { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
-        .modal .agree input { width: 18px; height: 18px; }
-        .modal input, .modal select { width: 100%; padding: 10px; margin: 6px 0; border: 2px solid #e0e6f0; border-radius: 12px; font-size: 14px; }
-        .blocked-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 999; }
-        .blocked-overlay.show { display: flex; }
-        .blocked-card { background: white; max-width: 400px; width: 90%; padding: 30px; border-radius: 24px; text-align: center; }
-        .blocked-card .price { font-size: 28px; font-weight: 700; color: #1a2a6c; margin: 12px 0; }
-        .tariff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-        .tariff-card { background: #f8faff; border-radius: 12px; padding: 12px; border: 1px solid #e8edf5; text-align: center; }
-        .tariff-card .price { font-size: 18px; font-weight: 700; color: #1a2a6c; }
-        .file-upload-area { padding: 20px; border: 2px dashed #d0d8e8; border-radius: 16px; background: #f8faff; cursor: pointer; text-align: center; }
-        .file-upload-area input { display: none; }
-        .pair-code { font-size: 28px; font-weight: 700; letter-spacing: 4px; background: #f0f4ff; padding: 12px 20px; border-radius: 12px; display: inline-block; margin: 12px 0; }
-        .carousel { background: #f8faff; border-radius: 16px; padding: 16px; margin: 12px 0; text-align: center; min-height: 70px; border: 1px solid #e8edf5; }
-        .carousel .text { font-size: 14px; color: #555; line-height: 1.6; }
-        .carousel .dots { margin-top: 8px; display: flex; justify-content: center; gap: 6px; }
-        .carousel .dot { width: 8px; height: 8px; border-radius: 50%; background: #d0d8e8; cursor: pointer; }
-        .carousel .dot.active { background: #1a2a6c; }
-        .history-item { padding: 10px 12px; background: #f8faff; border-radius: 12px; margin: 6px 0; border-left: 3px solid #1a2a6c; }
-        .history-item .date { font-size: 11px; color: #888; }
-        .history-item .text { font-size: 14px; color: #1a2a6c; }
-        .history-item .mark-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; color: white; margin-left: 6px; }
-        .settings-group { margin: 12px 0; }
-        .settings-group label { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #e8edf5; }
-        .settings-group input[type="text"] { flex: 1; padding: 8px 12px; border: 2px solid #e0e6f0; border-radius: 8px; font-size: 14px; outline: none; }
-        .settings-group input[type="checkbox"] { width: 20px; height: 20px; }
-        .settings-group select { width: 100%; padding: 10px; border-radius: 12px; border: 2px solid #e0e6f0; font-size: 14px; margin-top: 6px; background: white; }
-        .tutor-options { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-        .tutor-options select, .tutor-options button { padding: 8px 12px; border-radius: 12px; border: 2px solid #e0e6f0; font-size: 13px; background: white; cursor: pointer; }
-        .tutor-options .btn-active { background: #1a2a6c; color: white; border-color: #1a2a6c; }
-        .note-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1001; align-items: center; justify-content: center; }
-        .note-modal.show { display: flex; }
-        .note-modal .modal { max-width: 400px; }
-        .color-picker { display: flex; gap: 8px; margin: 8px 0; }
-        .color-picker .color-option { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
-        .color-picker .color-option.active { border-color: #1a2a6c; }
-        @media (max-width: 480px) { .container { padding: 12px; } .header h1 { font-size: 20px; } .tariff-grid { grid-template-columns: 1fr; } .header-right .limit-indicator { font-size: 10px; padding: 2px 8px; } }
-
-        /* Стили для карточек выбора */
-        .mode-selector {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            margin: 20px 0;
-        }
-        .mode-card {
-            display: flex;
-            align-items: center;
-            background: #f8faff;
-            border-radius: 16px;
-            padding: 20px;
-            border: 2px solid #e0e6f0;
-            cursor: pointer;
-            transition: all 0.2s;
-            gap: 16px;
-        }
-        .mode-card:hover {
-            border-color: #1a2a6c;
-            background: #f0f4ff;
-        }
-        .mode-card .icon {
-            font-size: 40px;
-            width: 60px;
-            text-align: center;
-        }
-        .mode-card .info {
-            flex: 1;
-        }
-        .mode-card .info h3 {
-            margin: 0;
-            color: #1a2a6c;
-            font-size: 20px;
-        }
-        .mode-card .info p {
-            margin: 4px 0 0;
-            color: #666;
-            font-size: 14px;
-        }
-        .mode-card .arrow {
-            font-size: 24px;
-            color: #1a2a6c;
-        }
-        .bottom-buttons {
-            display: flex;
-            gap: 8px;
-            margin-top: 12px;
-        }
-        .bottom-buttons .btn {
-            flex: 1;
-        }
+        textarea, input[type="text"], input[type="password"], input[type="email"], select { width: 100%; padding: 12px; border: 1px solid #d0d7e2; border-radius: 12px; font-size: 16px; margin: 8px 0; }
+        button { background: #4a6fa5; color: white; border: none; padding: 12px 24px; border-radius: 30px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #3a5a8a; }
+        .message { padding: 12px; border-radius: 12px; margin: 10px 0; }
+        .message.user { background: #e3ecf5; }
+        .message.bot { background: #f0f4fa; }
+        .history-item { background: #f8faff; border-radius: 12px; padding: 12px; margin: 8px 0; border-left: 4px solid #4a6fa5; }
+        .flex { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .badge { background: #ffd966; padding: 4px 12px; border-radius: 30px; font-size: 14px; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4a6fa5; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <h1>🧠 Самопознание</h1>
-        <div class="header-right">
-            <span class="limit-indicator" id="voiceLimitIndicator">🔊 20/20</span>
-            <span class="limit-indicator" id="uploadLimitIndicator">📁 10/10</span>
-            <span class="limit-indicator" id="tutorMinutesIndicator">⏱️ 0 мин</span>
-            <button class="emergency-btn" onclick="showEmergency()">🆘</button>
-            <button class="btn btn-secondary btn-small" onclick="logout()" id="logoutBtn">🚪</button>
+<div class="container" id="app">
+    <h1>🧠 Самопознание</h1>
+
+    <!-- Вкладки -->
+    <div class="tabs" id="tabs">
+        <button class="tab-btn active" data-tab="auth">Вход</button>
+        <button class="tab-btn" data-tab="psychologist">Психолог</button>
+        <button class="tab-btn" data-tab="tutor">Наставник</button>
+        <button class="tab-btn" data-tab="history">История</button>
+        <button class="tab-btn" data-tab="settings">Настройки</button>
+        <button class="tab-btn" data-tab="pair">Пары</button>
+        <button class="tab-btn" data-tab="support">Поддержка</button>
+        <button class="tab-btn" data-tab="admin">Админ</button>
+    </div>
+
+    <!-- Вкладка: Вход / Регистрация -->
+    <div id="tab-auth" class="tab-content active">
+        <h3>Авторизация</h3>
+        <div id="auth-form">
+            <input type="email" id="login-email" placeholder="Email" required>
+            <input type="password" id="login-password" placeholder="Пароль" required>
+            <button id="login-btn">Войти</button>
+            <hr>
+            <p>Нет аккаунта? <a href="#" id="show-register">Зарегистрироваться</a></p>
+        </div>
+        <div id="register-form" style="display:none;">
+            <input type="text" id="reg-name" placeholder="Имя">
+            <input type="email" id="reg-email" placeholder="Email" required>
+            <input type="password" id="reg-password" placeholder="Пароль" required>
+            <button id="register-btn">Зарегистрироваться</button>
+            <p><a href="#" id="show-login">Уже есть аккаунт? Войти</a></p>
+        </div>
+        <div id="verify-section" style="display:none;">
+            <p>Введите код из письма:</p>
+            <input type="text" id="verify-code" placeholder="6 цифр">
+            <button id="verify-btn">Подтвердить</button>
+        </div>
+        <div id="auth-status" class="message"></div>
+    </div>
+
+    <!-- Вкладка: Психолог -->
+    <div id="tab-psychologist" class="tab-content">
+        <h3>💬 Психолог Вероника</h3>
+        <div id="psycho-chat" style="max-height:400px; overflow-y:auto; background:#f9fbfd; border-radius:12px; padding:10px; margin-bottom:10px;"></div>
+        <textarea id="psycho-input" rows="3" placeholder="Напишите, что вас беспокоит..."></textarea>
+        <div class="flex">
+            <button id="psycho-send">Отправить</button>
+            <button id="psycho-voice">🎤 Голос</button>
+        </div>
+        <div id="psycho-limits" style="font-size:14px; color:#666; margin-top:8px;"></div>
+        <audio id="psycho-audio" controls style="width:100%; margin-top:10px; display:none;"></audio>
+    </div>
+
+    <!-- Вкладка: Наставник -->
+    <div id="tab-tutor" class="tab-content">
+        <h3>📚 Наставник Вероника</h3>
+        <div class="flex">
+            <select id="tutor-subject">
+                <option value="">Общий</option>
+                <option value="Математика">Математика</option>
+                <option value="Физика">Физика</option>
+                <option value="Химия">Химия</option>
+                <option value="Биология">Биология</option>
+                <option value="История">История</option>
+                <option value="Литература">Литература</option>
+                <option value="Английский">Английский</option>
+                <option value="Программирование">Программирование</option>
+            </select>
+            <label><input type="checkbox" id="tutor-live"> Лекция (расходует минуты)</label>
+        </div>
+        <div id="tutor-chat" style="max-height:400px; overflow-y:auto; background:#f9fbfd; border-radius:12px; padding:10px; margin-bottom:10px;"></div>
+        <textarea id="tutor-input" rows="3" placeholder="Задайте вопрос по предмету..."></textarea>
+        <div class="flex">
+            <button id="tutor-send">Отправить</button>
+            <button id="tutor-voice">🎤 Голос</button>
+            <button id="tutor-grammar">📝 Проверить грамматику</button>
+        </div>
+        <div id="tutor-info" style="font-size:14px; color:#666; margin-top:8px;">Баланс минут: <span id="tutor-minutes">0</span></div>
+        <div id="tutor-notes-area" style="margin-top:15px;">
+            <h4>Заметки к сессии</h4>
+            <input type="text" id="note-text" placeholder="Текст заметки">
+            <button id="note-save">Сохранить заметку</button>
+            <div id="notes-list"></div>
+        </div>
+        <div id="tutor-marks-area" style="margin-top:15px;">
+            <h4>Пометки</h4>
+            <select id="mark-color">
+                <option value="blue">Синяя</option>
+                <option value="red">Красная</option>
+                <option value="green">Зелёная</option>
+                <option value="yellow">Жёлтая</option>
+            </select>
+            <input type="text" id="mark-label" placeholder="Метка (необязательно)">
+            <button id="mark-save">Добавить пометку</button>
+            <div id="marks-list"></div>
         </div>
     </div>
 
-    <div class="carousel" id="tipsCarousel">
-        <div class="text" id="tipText">💡 Выберите режим: психолог или наставник</div>
-        <div class="dots" id="tipDots"></div>
+    <!-- Вкладка: История -->
+    <div id="tab-history" class="tab-content">
+        <h3>📜 История сессий</h3>
+        <div class="flex">
+            <button id="history-psycho">Психолог</button>
+            <button id="history-tutor">Наставник</button>
+        </div>
+        <div id="history-container"></div>
     </div>
 
-    <!-- КАРТОЧКИ ВЫБОРА -->
-    <div id="modeSelector" class="mode-selector">
-        <div class="mode-card" onclick="switchMode('psychologist')">
-            <div class="icon">🧠</div>
-            <div class="info">
-                <h3>Психолог</h3>
-                <p>Поддержка, забота, работа с эмоциями</p>
-            </div>
-            <div class="arrow">→</div>
+    <!-- Вкладка: Настройки -->
+    <div id="tab-settings" class="tab-content">
+        <h3>⚙️ Настройки</h3>
+        <div>
+            <label>Имя: <input type="text" id="settings-name"></label>
+            <label><input type="checkbox" id="settings-voice"> Голосовые ответы</label>
+            <button id="settings-save">Сохранить</button>
         </div>
-        <div class="mode-card" onclick="switchMode('tutor')">
-            <div class="icon">📚</div>
-            <div class="info">
-                <h3>Наставник</h3>
-                <p>Репетитор по школьным предметам</p>
-            </div>
-            <div class="arrow">→</div>
-        </div>
-        <div class="bottom-buttons">
-            <button class="btn btn-secondary" onclick="showTab('profile')">👤 Профиль</button>
-            <button class="btn btn-secondary" onclick="showTab('settings')">⚙️ Настройки</button>
-        </div>
+        <hr>
+        <button id="settings-delete" style="background:#c0392b;">Удалить все мои данные</button>
+        <div id="profile-info"></div>
     </div>
 
-    <!-- ВКЛАДКИ (скрыты, пока не выбран режим) -->
-    <div id="tabsContainer" style="display:none;">
-        <div class="tabs">
-            <button class="tab active" data-tab="psychologist">🧠 Психолог</button>
-            <button class="tab" data-tab="tutor">📚 Наставник</button>
-            <button class="tab" data-tab="profile">👤 Профиль</button>
-            <button class="tab" data-tab="settings">⚙️ Настройки</button>
-            <button class="tab" id="backToModeBtn" onclick="showModeSelector()">🏠 Главная</button>
-        </div>
-
-        <!-- ПСИХОЛОГ -->
-        <div id="tab-psychologist" class="tab-content active">
-            <div class="chat-area" id="psychologistMessages">
-                <div class="message bot">👋 Привет! Я Вероника — ваш психолог. Расскажите, что вас тревожит?</div>
-            </div>
-            <div class="input-area">
-                <textarea id="psychologistInput" placeholder="Напишите сообщение..." rows="2"></textarea>
-                <button class="btn" id="psychologistSendBtn">📤</button>
-            </div>
-            <div class="status-text" id="psychologistStatus"></div>
-        </div>
-
-        <!-- НАСТАВНИК -->
-        <div id="tab-tutor" class="tab-content">
-            <div class="subtabs">
-                <button class="subtab active" data-subtab="tutor-chat">📖 Занятие</button>
-                <button class="subtab" data-subtab="tutor-history">📜 История</button>
-                <button class="subtab" data-subtab="tutor-grammar">✍️ Грамматика</button>
-            </div>
-
-            <div id="subtab-tutor-chat" class="subtab-content active">
-                <div class="tutor-options">
-                    <select id="tutorSubject">
-                        <option value="">Выберите предмет</option>
-                        <option value="Математика">Математика</option>
-                        <option value="Физика">Физика</option>
-                        <option value="Химия">Химия</option>
-                        <option value="Биология">Биология</option>
-                        <option value="История">История</option>
-                        <option value="Литература">Литература</option>
-                        <option value="Английский">Английский</option>
-                        <option value="Программирование">Программирование</option>
-                        <option value="Другое">Другое</option>
-                    </select>
-                    <button id="tutorLiveBtn" class="btn-secondary">🎓 Лекция</button>
-                    <span id="tutorLiveStatus" style="font-size:12px;color:#888;display:none;">🔴 Лекция активна</span>
-                </div>
-                <div class="chat-area" id="tutorMessages">
-                    <div class="message bot">📚 Привет! Я Вероника — ваш наставник. Задавайте вопросы по любому предмету!</div>
-                </div>
-                <div class="input-area">
-                    <textarea id="tutorInput" placeholder="Задайте вопрос..." rows="2"></textarea>
-                    <button class="btn" id="tutorSendBtn">📤</button>
-                </div>
-                <div class="status-text" id="tutorStatus"></div>
-            </div>
-
-            <div id="subtab-tutor-history" class="subtab-content">
-                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-                    <input type="text" id="historySearchSubject" placeholder="Фильтр по предмету" style="flex:1;padding:8px;border:2px solid #e0e6f0;border-radius:12px;">
-                    <input type="date" id="historyDateFrom" style="padding:8px;border:2px solid #e0e6f0;border-radius:12px;">
-                    <input type="date" id="historyDateTo" style="padding:8px;border:2px solid #e0e6f0;border-radius:12px;">
-                    <button class="btn btn-small" onclick="loadTutorHistory()">🔍 Найти</button>
-                    <button class="btn btn-secondary btn-small" onclick="clearHistoryFilters()">✖️</button>
-                </div>
-                <div id="historyList"><div class="status-text">Загрузка...</div></div>
-            </div>
-
-            <div id="subtab-tutor-grammar" class="subtab-content">
-                <p style="color:#555;font-size:14px;margin-bottom:8px;">Проверьте свой текст на ошибки. Наставник поможет улучшить грамотность.</p>
-                <div class="chat-area" id="grammarMessages">
-                    <div class="message bot">✍️ Напишите текст для проверки грамматики.</div>
-                </div>
-                <div class="input-area">
-                    <textarea id="grammarInput" placeholder="Введите текст для проверки..." rows="3"></textarea>
-                    <button class="btn" id="grammarSendBtn">📤</button>
-                </div>
-                <div class="status-text" id="grammarStatus"></div>
-            </div>
-        </div>
-
-        <!-- ПРОФИЛЬ -->
-        <div id="tab-profile" class="tab-content">
-            <div class="card" id="profileCard"><div class="status-text">Загрузка...</div></div>
-            <div id="tariffsList" class="tariff-grid"></div>
-            <button class="btn btn-danger" onclick="resetTrial()" style="margin-top:12px;width:100%;">🔄 Сбросить подписку (тест)</button>
-            <div style="margin-top:12px; padding:12px; background:#f8faff; border-radius:12px;">
-                <div class="row"><span class="label">Email</span><span class="value" id="profileEmail">—</span></div>
-                <div class="row"><span class="label">Телефон</span><span class="value" id="profilePhone">—</span></div>
-            </div>
-        </div>
-
-        <!-- НАСТРОЙКИ -->
-        <div id="tab-settings" class="tab-content">
-            <div class="card">
-                <h3 style="margin-bottom:12px;">⚙️ Настройки</h3>
-                <div class="settings-group"><label>Имя: <input type="text" id="settingsName" placeholder="Ваше имя"></label></div>
-                <div class="settings-group"><label><input type="checkbox" id="settingsVoice" checked> Голосовые ответы Вероники</label></div>
-                <div class="settings-group">
-                    <label>Режим ответа:</label>
-                    <select id="voiceMode">
-                        <option value="text">📝 Текст + кнопка</option>
-                        <option value="auto">🔊 Автоголос</option>
-                    </select>
-                </div>
-                <button class="btn btn-secondary" onclick="saveSettings()">💾 Сохранить</button>
-                <hr style="margin:16px 0;">
-                <button class="btn btn-danger" onclick="deleteAllData()">🗑️ Стереть все данные</button>
-                <hr style="margin:16px 0;">
-                <div class="card">
-                    <h4 style="margin-bottom:8px;">💬 Поддержка</h4>
-                    <div class="support-chat" id="supportMessages">
-                        <div style="text-align:center;color:#888;font-size:13px;padding:20px;">Нет сообщений</div>
-                    </div>
-                    <div class="support-input">
-                        <input type="text" id="supportInput" placeholder="Напишите сообщение в поддержку...">
-                        <button class="btn btn-small" onclick="sendSupportMessage()">📤</button>
-                    </div>
-                </div>
-            </div>
-            <div class="card" id="historyContainer">
-                <h3 style="margin-bottom:12px;">📜 История сессий (психолог)</h3>
-                <div id="historyListPsych"><div class="status-text">Загрузка...</div></div>
-            </div>
-        </div>
+    <!-- Вкладка: Пары -->
+    <div id="tab-pair" class="tab-content">
+        <h3>👫 Парные сессии</h3>
+        <button id="pair-invite">Создать код приглашения</button>
+        <input type="text" id="pair-code" placeholder="Введите код партнёра">
+        <button id="pair-connect">Подключиться</button>
+        <button id="pair-disconnect">Отключиться</button>
+        <div id="pair-status"></div>
+        <textarea id="pair-input" rows="3" placeholder="Сообщение для партнёра..."></textarea>
+        <button id="pair-send">Отправить</button>
+        <div id="pair-chat"></div>
     </div>
+
+    <!-- Вкладка: Поддержка -->
+    <div id="tab-support" class="tab-content">
+        <h3>📧 Поддержка</h3>
+        <textarea id="support-input" rows="3" placeholder="Ваше сообщение..."></textarea>
+        <button id="support-send">Отправить</button>
+        <div id="support-messages"></div>
+    </div>
+
+    <!-- Вкладка: Админ -->
+    <div id="tab-admin" class="tab-content">
+        <h3>🔐 Админ-панель</h3>
+        <input type="password" id="admin-pass" placeholder="Пароль админа">
+        <button id="admin-stats">Статистика</button>
+        <div id="admin-result"></div>
+    </div>
+
+    <div id="global-loader" class="loader"></div>
 </div>
-
-<!-- МОДАЛКИ -->
-<!-- Авторизация (красивая, как раньше) -->
-<div id="authModal" style="display:flex; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
-    <div style="background:white; max-width:400px; width:90%; padding:30px; border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
-        <h2 style="color:#1a2a6c; text-align:center;">🧠 Вход / Регистрация</h2>
-        <div style="display:flex; gap:0; margin:16px 0; border-bottom:2px solid #e0e6f0;">
-            <button class="tab active" data-auth-tab="login" onclick="switchAuthTab('login')" style="flex:1; padding:10px; border:none; background:transparent; font-weight:600; cursor:pointer; border-bottom:2px solid #1a2a6c; color:#1a2a6c;">Вход</button>
-            <button class="tab" data-auth-tab="register" onclick="switchAuthTab('register')" style="flex:1; padding:10px; border:none; background:transparent; font-weight:600; cursor:pointer; border-bottom:2px solid transparent;">Регистрация</button>
-        </div>
-        <div id="authLogin">
-            <input type="email" id="loginInput" placeholder="Email" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px; background:#f8faff;">
-            <input type="password" id="passwordInput" placeholder="Пароль" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px; background:#f8faff;">
-            <button class="btn" style="width:100%; margin-top:8px;" onclick="login()">Войти</button>
-        </div>
-        <div id="authRegister" style="display:none;">
-            <input type="text" id="regName" placeholder="Имя" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px; background:#f8faff;">
-            <input type="email" id="regEmail" placeholder="Email" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px; background:#f8faff;">
-            <input type="password" id="regPassword" placeholder="Пароль" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px; background:#f8faff;">
-            <button class="btn" style="width:100%; margin-top:8px;" onclick="register()">Зарегистрироваться</button>
-        </div>
-        <div style="text-align:center; margin-top:12px;">
-            <button class="btn btn-secondary" style="width:100%;" onclick="vkLogin()">Войти через ВКонтакте</button>
-        </div>
-        <div style="margin-top:8px; text-align:center; color:#888; font-size:13px;">Продолжая, вы принимаете условия использования</div>
-        <button class="btn btn-secondary" style="width:100%; margin-top:12px;" onclick="document.getElementById('authModal').style.display='none'">Закрыть</button>
-    </div>
-</div>
-
-<!-- Подтверждение email -->
-<div id="verifyEmailModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
-    <div style="background:white; max-width:400px; width:90%; padding:30px; border-radius:24px;">
-        <h2 style="color:#1a2a6c;">✅ Подтверждение email</h2>
-        <p style="color:#555;">На почту отправлен код. Введите его ниже.</p>
-        <input type="text" id="verifyCodeInput" placeholder="Введите код из письма" style="width:100%; padding:12px; margin:8px 0; border:2px solid #e0e6f0; border-radius:12px; font-size:14px; background:#f8faff;">
-        <button class="btn" style="width:100%;" onclick="verifyEmail()">Подтвердить</button>
-        <button class="btn btn-secondary" style="width:100%; margin-top:8px;" onclick="document.getElementById('verifyEmailModal').style.display='none'">Закрыть</button>
-        <div id="verifyStatus" style="margin-top:8px; color:#e74c3c;"></div>
-    </div>
-</div>
-
-<!-- Остальные модалки (заметки, пометки, приветствие, блокировка, экстренная помощь, инструкция) – я их опускаю, они такие же как в вашем старом файле, их можно оставить без изменений -->
-<!-- Для полноты я их не вставляю, чтобы не загромождать ответ, но они должны быть -->
 
 <script>
-const API_BASE = 'https://voice-psychologist.relaxdev.ru';
-let token = localStorage.getItem('access_token');
-let currentAudio = null;
-let currentPsychologistAudio = null;
-let currentTutorAudio = null;
-let currentFileAudio = null;
-let userName = '';
-let tipsData = [];
-let currentChart = 'line';
-let registeredEmail = '';
-let isLiveMode = false;
-let noteColor = 'yellow';
-let markColor = 'blue';
+// ============================================================
+// Глобальные переменные
+// ============================================================
+let token = localStorage.getItem('token') || '';
+let currentUserId = null;
+let currentMode = 'psychologist'; // 'psychologist' или 'tutor'
+let currentSessionId = null; // для заметок/пометок
 
-if (!token) {
-    document.getElementById('authModal').style.display = 'flex';
-} else {
-    initApp();
-}
-
-function switchAuthTab(tab) {
-    document.querySelectorAll('#authModal .tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`#authModal .tab[data-auth-tab="${tab}"]`).classList.add('active');
-    document.getElementById('authLogin').style.display = tab === 'login' ? 'block' : 'none';
-    document.getElementById('authRegister').style.display = tab === 'register' ? 'block' : 'none';
-}
-
-async function login() {
-    const login = document.getElementById('loginInput').value;
-    const password = document.getElementById('passwordInput').value;
-    if (!login || !password) { alert('Заполните все поля'); return; }
-    try {
-        const response = await fetch(`${API_BASE}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `login=${encodeURIComponent(login)}&password=${encodeURIComponent(password)}`
-        });
-        const data = await response.json();
-        if (data.access_token) {
-            localStorage.setItem('access_token', data.access_token);
-            token = data.access_token;
-            document.getElementById('authModal').style.display = 'none';
-            initApp();
+// ============================================================
+// Вспомогательные функции
+// ============================================================
+function apiCall(method, endpoint, body = null, isForm = false) {
+    const options = {
+        method: method,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+        },
+    };
+    if (body) {
+        if (isForm) {
+            options.body = body;
         } else {
-            alert('Ошибка входа: ' + (data.detail || 'неверные данные'));
+            options.headers['Content-Type'] = 'application/json';
+            options.body = JSON.stringify(body);
         }
-    } catch (e) {
-        alert('Ошибка соединения: ' + e.message);
     }
+    return fetch(endpoint, options).then(r => r.json());
 }
 
-async function register() {
-    const name = document.getElementById('regName').value;
-    const email = document.getElementById('regEmail').value;
-    const password = document.getElementById('regPassword').value;
-    if (!name || !password) { alert('Имя и пароль обязательны'); return; }
-    if (!email) { alert('Укажите email'); return; }
-    try {
-        const response = await fetch(`${API_BASE}/auth/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, password })
+function showTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + tabId).classList.add('active');
+    document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+}
+
+function addMessage(container, text, isUser = true, extra = '') {
+    const div = document.createElement('div');
+    div.className = `message ${isUser ? 'user' : 'bot'}`;
+    div.innerHTML = `<strong>${isUser ? 'Вы' : 'Вероника'}:</strong> ${text} ${extra}`;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function showLoader(show) {
+    document.getElementById('global-loader').style.display = show ? 'block' : 'none';
+}
+
+function formatDate(iso) {
+    return new Date(iso).toLocaleString('ru-RU');
+}
+
+// ============================================================
+// Авторизация
+// ============================================================
+document.getElementById('login-btn').addEventListener('click', () => {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) return alert('Заполните все поля');
+    showLoader(true);
+    const form = new FormData();
+    form.append('login', email);
+    form.append('password', password);
+    fetch('/auth/login', { method: 'POST', body: form })
+        .then(r => r.json())
+        .then(data => {
+            if (data.access_token) {
+                token = data.access_token;
+                localStorage.setItem('token', token);
+                document.getElementById('auth-status').innerHTML = '<div class="message bot">✅ Вход выполнен</div>';
+                loadProfile();
+                showTab('psychologist');
+            } else {
+                document.getElementById('auth-status').innerHTML = `<div class="message user">❌ ${data.detail || 'Ошибка'}</div>`;
+            }
+            showLoader(false);
         });
-        const data = await response.json();
-        if (response.ok) {
-            registeredEmail = email;
-            document.getElementById('verifyEmailModal').style.display = 'flex';
-            document.getElementById('verifyStatus').textContent = '';
-            document.getElementById('authModal').style.display = 'none';
-            alert('Код отправлен на почту. Введите его в открывшемся окне.');
-        } else {
-            alert('Ошибка регистрации: ' + (data.detail || ''));
-        }
-    } catch (e) {
-        alert('Ошибка соединения: ' + e.message);
-    }
-}
+});
 
-async function verifyEmail() {
-    const code = document.getElementById('verifyCodeInput').value.trim();
-    if (!code) { alert('Введите код'); return; }
-    const status = document.getElementById('verifyStatus');
-    status.textContent = 'Проверка...';
-    try {
-        const response = await fetch(`${API_BASE}/auth/verify-email`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `email=${encodeURIComponent(registeredEmail)}&code=${encodeURIComponent(code)}`
+document.getElementById('register-btn').addEventListener('click', () => {
+    const name = document.getElementById('reg-name').value || 'Пользователь';
+    const email = document.getElementById('reg-email').value;
+    const password = document.getElementById('reg-password').value;
+    if (!email || !password) return alert('Заполните все поля');
+    showLoader(true);
+    fetch('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.message) {
+            document.getElementById('auth-status').innerHTML = `<div class="message bot">✅ ${data.message}</div>`;
+            document.getElementById('verify-section').style.display = 'block';
+            document.getElementById('verify-section').dataset.email = email;
+        } else {
+            document.getElementById('auth-status').innerHTML = `<div class="message user">❌ ${data.detail || 'Ошибка'}</div>`;
+        }
+        showLoader(false);
+    });
+});
+
+document.getElementById('verify-btn').addEventListener('click', () => {
+    const email = document.getElementById('verify-section').dataset.email;
+    const code = document.getElementById('verify-code').value;
+    if (!code) return alert('Введите код');
+    const form = new FormData();
+    form.append('email', email);
+    form.append('code', code);
+    showLoader(true);
+    fetch('/auth/verify-email', { method: 'POST', body: form })
+        .then(r => r.json())
+        .then(data => {
+            if (data.access_token) {
+                token = data.access_token;
+                localStorage.setItem('token', token);
+                document.getElementById('auth-status').innerHTML = '<div class="message bot">✅ Email подтверждён, вход выполнен</div>';
+                loadProfile();
+                showTab('psychologist');
+            } else {
+                document.getElementById('auth-status').innerHTML = `<div class="message user">❌ ${data.detail || 'Ошибка'}</div>`;
+            }
+            showLoader(false);
         });
-        const data = await response.json();
-        if (response.ok) {
-            localStorage.setItem('access_token', data.access_token);
-            token = data.access_token;
-            document.getElementById('verifyEmailModal').style.display = 'none';
-            initApp();
-        } else {
-            status.textContent = 'Ошибка: ' + (data.detail || 'Неверный код');
-        }
-    } catch (e) {
-        status.textContent = 'Ошибка: ' + e.message;
-    }
+});
+
+document.getElementById('show-register').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('auth-form').style.display = 'none';
+    document.getElementById('register-form').style.display = 'block';
+});
+document.getElementById('show-login').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('register-form').style.display = 'none';
+    document.getElementById('auth-form').style.display = 'block';
+});
+
+// ============================================================
+// Загрузка профиля
+// ============================================================
+function loadProfile() {
+    if (!token) return;
+    apiCall('GET', '/auth/me')
+        .then(data => {
+            if (data.id) {
+                currentUserId = data.id;
+                document.getElementById('settings-name').value = data.name || '';
+                document.getElementById('settings-voice').checked = data.voice_responses_enabled !== false;
+                document.getElementById('profile-info').innerHTML = `
+                    <p>Email: ${data.email || '—'}</p>
+                    <p>Психолог: ${data.psychologist_subscription} (до ${data.psychologist_end ? formatDate(data.psychologist_end) : '—'})</p>
+                    <p>Наставник: ${data.tutor_subscription} (до ${data.tutor_end ? formatDate(data.tutor_end) : '—'})</p>
+                    <p>Минуты наставника: ${data.tutor_minutes_balance}</p>
+                `;
+                document.getElementById('tutor-minutes').textContent = data.tutor_minutes_balance;
+                loadLimits();
+            }
+        });
 }
 
-async function vkLogin() {
-    if (typeof VKWebAppInit !== 'undefined') {
-        VKWebAppInit().then(() => {
-            VKWebAppGetUserInfo().then((data) => {
-                fetch(`${API_BASE}/auth/vk`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `vk_id=${data.id}`
-                }).then(res => res.json()).then(result => {
-                    if (result.access_token) {
-                        localStorage.setItem('access_token', result.access_token);
-                        token = result.access_token;
-                        document.getElementById('authModal').style.display = 'none';
-                        initApp();
-                    }
-                });
+function loadLimits() {
+    apiCall('GET', '/limits')
+        .then(data => {
+            document.getElementById('psycho-limits').innerHTML = `
+                Голосовых сегодня: ${data.voice_used}/${data.voice_limit} |
+                Загрузок аудио: ${data.upload_used}/${data.upload_limit} |
+                Минут наставника: ${data.tutor_minutes}
+            `;
+        });
+}
+
+// ============================================================
+// Переключение вкладок
+// ============================================================
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        showTab(tab);
+        if (tab === 'settings') loadProfile();
+        if (tab === 'history') loadHistory('psychologist');
+        if (tab === 'tutor') loadTutorNotesMarks();
+    });
+});
+
+// ============================================================
+// Психолог
+// ============================================================
+document.getElementById('psycho-send').addEventListener('click', sendPsychoMessage);
+document.getElementById('psycho-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendPsychoMessage(); }
+});
+
+function sendPsychoMessage() {
+    const input = document.getElementById('psycho-input');
+    const text = input.value.trim();
+    if (!text) return;
+    const chat = document.getElementById('psycho-chat');
+    addMessage(chat, text, true);
+    input.value = '';
+    showLoader(true);
+    const form = new FormData();
+    form.append('text', text);
+    fetch('/psychologist/chat', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: form })
+        .then(r => r.json())
+        .then(data => {
+            if (data.response) {
+                addMessage(chat, data.response, false);
+                if (data.audio) {
+                    const audioEl = document.getElementById('psycho-audio');
+                    audioEl.src = 'data:audio/mpeg;base64,' + data.audio;
+                    audioEl.style.display = 'block';
+                    audioEl.play();
+                }
+                if (data.limits) {
+                    document.getElementById('psycho-limits').innerHTML = `
+                        Голосовых сегодня: ${data.limits.voice_used}/${data.limits.voice_limit} |
+                        Загрузок аудио: ${data.limits.upload_used}/${data.limits.upload_limit}
+                    `;
+                }
+                loadLimits();
+            } else if (data.error) {
+                addMessage(chat, '❌ ' + data.error, false);
+            }
+            showLoader(false);
+        });
+}
+
+document.getElementById('psycho-voice').addEventListener('click', () => {
+    // Простой пример: используем Web Audio API (в реальности нужно добавить запись)
+    alert('Функция голосового ввода требует реализации через MediaRecorder. Пока отправьте текст.');
+});
+
+// ============================================================
+// Наставник
+// ============================================================
+document.getElementById('tutor-send').addEventListener('click', sendTutorMessage);
+document.getElementById('tutor-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTutorMessage(); }
+});
+
+function sendTutorMessage() {
+    const input = document.getElementById('tutor-input');
+    const text = input.value.trim();
+    if (!text) return;
+    const subject = document.getElementById('tutor-subject').value;
+    const isLive = document.getElementById('tutor-live').checked;
+    const chat = document.getElementById('tutor-chat');
+    addMessage(chat, text, true);
+    input.value = '';
+    showLoader(true);
+    const form = new FormData();
+    form.append('text', text);
+    if (subject) form.append('subject', subject);
+    form.append('is_live', isLive ? 'true' : 'false');
+    fetch('/tutor/chat', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: form })
+        .then(r => r.json())
+        .then(data => {
+            if (data.response) {
+                addMessage(chat, data.response, false);
+                if (data.minutes_balance !== undefined) {
+                    document.getElementById('tutor-minutes').textContent = data.minutes_balance;
+                }
+                loadLimits();
+            } else if (data.error) {
+                addMessage(chat, '❌ ' + data.error, false);
+            }
+            showLoader(false);
+        });
+}
+
+document.getElementById('tutor-voice').addEventListener('click', () => {
+    alert('Голосовой ввод для наставника пока реализуется. Используйте текстовый ввод.');
+});
+
+document.getElementById('tutor-grammar').addEventListener('click', () => {
+    const input = document.getElementById('tutor-input');
+    const text = input.value.trim();
+    if (!text) return alert('Введите текст для проверки');
+    showLoader(true);
+    const form = new FormData();
+    form.append('text', text);
+    fetch('/tutor/grammar', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: form })
+        .then(r => r.json())
+        .then(data => {
+            const chat = document.getElementById('tutor-chat');
+            if (data.response) {
+                addMessage(chat, '📝 Проверка грамматики:\n' + data.response, false);
+            } else if (data.error) {
+                addMessage(chat, '❌ ' + data.error, false);
+            }
+            showLoader(false);
+        });
+});
+
+// Заметки и пометки
+function loadTutorNotesMarks() {
+    // Загружаем заметки
+    apiCall('GET', '/tutor/notes')
+        .then(data => {
+            const list = document.getElementById('notes-list');
+            list.innerHTML = '';
+            (data.notes || []).forEach(n => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `<strong>${formatDate(n.date)}</strong> (${n.color}): ${n.text}`;
+                list.appendChild(div);
             });
         });
-    } else {
-        alert('VK Bridge не доступен в этом браузере');
+    // Загружаем пометки
+    apiCall('GET', '/tutor/marks')
+        .then(data => {
+            const list = document.getElementById('marks-list');
+            list.innerHTML = '';
+            (data.marks || []).forEach(m => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `<strong>${formatDate(m.date)}</strong> (${m.color}): ${m.label || '—'}`;
+                list.appendChild(div);
+            });
+        });
+}
+
+document.getElementById('note-save').addEventListener('click', () => {
+    const text = document.getElementById('note-text').value.trim();
+    if (!text) return alert('Введите текст заметки');
+    // Для простоты привязываем к текущей сессии (можно сделать выбор)
+    if (!currentSessionId) {
+        alert('Сначала отправьте сообщение наставнику, чтобы создать сессию.');
+        return;
     }
-}
+    const form = new FormData();
+    form.append('session_id', currentSessionId);
+    form.append('text', text);
+    form.append('color', 'yellow');
+    showLoader(true);
+    fetch('/tutor/notes', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: form })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                document.getElementById('note-text').value = '';
+                loadTutorNotesMarks();
+            }
+            showLoader(false);
+        });
+});
 
-function logout() {
-    localStorage.removeItem('access_token');
-    token = null;
-    location.reload();
-}
-
-async function apiRequest(url, options = {}) {
-    const headers = options.headers || {};
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+document.getElementById('mark-save').addEventListener('click', () => {
+    const color = document.getElementById('mark-color').value;
+    const label = document.getElementById('mark-label').value.trim();
+    if (!currentSessionId) {
+        alert('Сначала отправьте сообщение наставнику.');
+        return;
     }
-    if (!(options.body instanceof FormData)) {
-        headers['Content-Type'] = 'application/x-www-form-urlencoded';
-    }
-    const response = await fetch(url, { ...options, headers });
-    if (response.status === 401) {
-        alert('Сессия истекла, войдите заново');
-        logout();
-        return null;
-    }
-    return response.json();
-}
+    const form = new FormData();
+    form.append('session_id', currentSessionId);
+    form.append('color', color);
+    if (label) form.append('label', label);
+    showLoader(true);
+    fetch('/tutor/marks', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: form })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                document.getElementById('mark-label').value = '';
+                loadTutorNotesMarks();
+            }
+            showLoader(false);
+        });
+});
 
-function showModeSelector() {
-    document.getElementById('modeSelector').style.display = 'block';
-    document.getElementById('tabsContainer').style.display = 'none';
-    document.getElementById('tipsCarousel').style.display = 'block';
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-}
-
-function switchMode(mode) {
-    document.getElementById('modeSelector').style.display = 'none';
-    document.getElementById('tabsContainer').style.display = 'block';
-    document.getElementById('tipsCarousel').style.display = 'none';
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`.tab[data-tab="${mode}"]`).classList.add('active');
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.getElementById('tab-' + mode).classList.add('active');
-    if (mode === 'tutor') loadTutorHistory();
-    if (mode === 'profile') { loadProfile(); loadTariffs(); }
-    if (mode === 'settings') { loadSettings(); loadPsychologistHistory(); loadSupportMessages(); }
-}
-
-function initApp() {
-    checkWelcome();
-    loadProfile();
-    loadTariffs();
-    loadLimits();
-    loadSupportMessages();
-    setInterval(loadLimits, 60000);
-    loadLimits();
-    const tips = [
-        "💬 Психолог — поддержка и забота.",
-        "📚 Наставник — репетитор по всем предметам.",
-        "🎓 Лекция — длинное объяснение (расходует минуты).",
-        "📝 Сохраняйте важные фрагменты в заметки.",
-        "🏷️ Пометки помогут организовать сессии.",
-        "✍️ Грамматика — проверка текста на ошибки.",
-        "🔥 Скоро приложение появится в ВКонтакте!"
-    ];
-    tipsData = tips;
-    initCarousel();
-    loadSettings();
-    loadPsychologistHistory();
-    document.getElementById('modeSelector').style.display = 'block';
-    document.getElementById('tabsContainer').style.display = 'none';
-    // Обработчики вкладок
-    document.querySelectorAll('.tabs .tab').forEach(tab => {
-        if (tab.id === 'backToModeBtn') return;
-        tab.addEventListener('click', function() {
-            document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            const tabName = this.dataset.tab;
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            const target = document.getElementById('tab-' + tabName);
-            if (target) {
-                target.classList.add('active');
-            } else {
-                console.warn('Вкладка не найдена:', tabName);
+// ============================================================
+// История
+// ============================================================
+function loadHistory(mode) {
+    const container = document.getElementById('history-container');
+    container.innerHTML = '<div class="loader" style="display:block;"></div>';
+    const endpoint = mode === 'psychologist' ? '/history' : '/tutor/history';
+    apiCall('GET', endpoint)
+        .then(data => {
+            container.innerHTML = '';
+            const sessions = data.sessions || [];
+            if (!sessions.length) {
+                container.innerHTML = '<p>Нет сессий.</p>';
                 return;
             }
-            if (tabName === 'profile') { loadProfile(); loadTariffs(); }
-            if (tabName === 'settings') { loadSettings(); loadPsychologistHistory(); loadSupportMessages(); }
-            if (tabName === 'tutor') { loadTutorHistory(); }
-        });
-    });
-    // Подвкладки наставника
-    document.querySelectorAll('.subtab').forEach(sub => {
-        sub.addEventListener('click', function() {
-            document.querySelectorAll('.subtab').forEach(s => s.classList.remove('active'));
-            this.classList.add('active');
-            const subName = this.dataset.subtab;
-            document.querySelectorAll('.subtab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById('subtab-' + subName).classList.add('active');
-            if (subName === 'tutor-history') { loadTutorHistory(); }
-        });
-    });
-    // Психолог
-    document.getElementById('psychologistSendBtn').addEventListener('click', sendPsychologistMessage);
-    document.getElementById('psychologistInput').addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendPsychologistMessage(); }
-    });
-    // Наставник
-    document.getElementById('tutorSendBtn').addEventListener('click', sendTutorMessage);
-    document.getElementById('tutorInput').addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTutorMessage(); }
-    });
-    document.getElementById('tutorLiveBtn').addEventListener('click', toggleLiveMode);
-    // Грамматика
-    document.getElementById('grammarSendBtn').addEventListener('click', sendGrammarMessage);
-    document.getElementById('grammarInput').addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendGrammarMessage(); }
-    });
-    // Приветствие
-    document.getElementById('agreeCheckbox').addEventListener('change', function() {
-        document.getElementById('welcomeBtn').disabled = !this.checked;
-    });
-    document.getElementById('welcomeBtn').addEventListener('click', acceptWelcome);
-    // Заметки
-    document.getElementById('noteModal').addEventListener('click', function(e) {
-        if (e.target === this) closeNoteModal();
-    });
-    document.getElementById('markModal').addEventListener('click', function(e) {
-        if (e.target === this) closeMarkModal();
-    });
-}
-
-function initCarousel() {
-    const tipText = document.getElementById('tipText');
-    const tipDots = document.getElementById('tipDots');
-    const tips = tipsData.length > 0 ? tipsData : defaultTips;
-    tipDots.innerHTML = '';
-    tips.forEach((_, i) => {
-        const dot = document.createElement('span');
-        dot.className = 'dot' + (i === 0 ? ' active' : '');
-        dot.onclick = () => showTip(i);
-        tipDots.appendChild(dot);
-    });
-    tipText.textContent = tips[0] || '💡 Выберите режим: психолог или наставник.';
-    let tipIndex = 0;
-    setInterval(() => {
-        if (tips.length > 0) {
-            tipIndex = (tipIndex + 1) % tips.length;
-            showTip(tipIndex);
-        }
-    }, 7000);
-    window.showTip = function(i) {
-        const tips = tipsData.length > 0 ? tipsData : defaultTips;
-        tipIndex = i % tips.length;
-        tipText.textContent = tips[tipIndex];
-        document.querySelectorAll('.dot').forEach((d, idx) => d.classList.toggle('active', idx === tipIndex));
-    };
-}
-
-function showTab(name) {
-    document.getElementById('modeSelector').style.display = 'none';
-    document.getElementById('tabsContainer').style.display = 'block';
-    document.getElementById('tipsCarousel').style.display = 'none';
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.getElementById('tab-' + name).classList.add('active');
-    if (name === 'profile') { loadProfile(); loadTariffs(); }
-    if (name === 'settings') { loadSettings(); loadPsychologistHistory(); loadSupportMessages(); }
-    if (name === 'tutor') { loadTutorHistory(); }
-    document.getElementById('blockedOverlay').classList.remove('show');
-}
-
-async function checkWelcome() {
-    try {
-        const data = await apiRequest(`${API_BASE}/profile`);
-        if (!data) return;
-        if (!data.has_seen_welcome) {
-            document.getElementById('welcomeModal').style.display = 'flex';
-        } else {
-            document.getElementById('welcomeModal').style.display = 'none';
-            checkAccess(data);
-        }
-    } catch (e) { console.log('Ошибка приветствия'); }
-}
-
-async function acceptWelcome() {
-    const btn = document.getElementById('welcomeBtn');
-    btn.textContent = '⏳...';
-    btn.disabled = true;
-    try {
-        await apiRequest(`${API_BASE}/welcome/accept`, { method: 'POST' });
-        document.getElementById('welcomeModal').style.display = 'none';
-        loadProfile();
-        loadTariffs();
-    } catch (e) { alert('Ошибка'); }
-    btn.textContent = 'Продолжить';
-    btn.disabled = false;
-}
-
-function checkAccess(data) {
-    if (!data.has_access) {
-        document.getElementById('blockedOverlay').classList.add('show');
-    } else {
-        document.getElementById('blockedOverlay').classList.remove('show');
-        if (data.psychologist_subscription === 'premium') {
-            document.getElementById('voiceLimitIndicator').style.display = 'none';
-            document.getElementById('uploadLimitIndicator').style.display = 'none';
-        } else {
-            document.getElementById('voiceLimitIndicator').style.display = 'inline';
-            document.getElementById('uploadLimitIndicator').style.display = 'inline';
-        }
-    }
-}
-
-async function loadLimits() {
-    try {
-        const data = await apiRequest(`${API_BASE}/limits`);
-        if (!data) return;
-        document.getElementById('voiceLimitIndicator').textContent = `🔊 ${data.voice_used}/${data.voice_limit}`;
-        document.getElementById('uploadLimitIndicator').textContent = `📁 ${data.upload_used}/${data.upload_limit}`;
-        document.getElementById('tutorMinutesIndicator').textContent = `⏱️ ${data.tutor_minutes || 0} мин`;
-    } catch (e) { console.log('Ошибка загрузки лимитов'); }
-}
-
-// === ПРОФИЛЬ ===
-async function loadProfile() {
-    const card = document.getElementById('profileCard');
-    card.innerHTML = '<div class="status-text">Загрузка...</div>';
-    try {
-        const data = await apiRequest(`${API_BASE}/profile`);
-        if (!data) return;
-        checkAccess(data);
-        if (data.name) userName = data.name;
-        const subStatusPsych = data.psychologist_subscription === 'premium' ? '⭐ Премиум' : '🆓 Бесплатно';
-        const subStatusTutor = data.tutor_subscription === 'premium' ? '⭐ Премиум' : '🆓 Бесплатно';
-        let timeLeftPsych = '—', timeColorPsych = '#27ae60';
-        if (data.psychologist_end) {
-            const diff = new Date(data.psychologist_end) - new Date();
-            if (diff > 0) {
-                const days = Math.floor(diff / (1000*60*60*24));
-                const hours = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
-                const minutes = Math.floor((diff % (1000*60*60)) / (1000*60));
-                timeLeftPsych = `${days}д ${hours}ч ${minutes}м`;
-                timeColorPsych = '#27ae60';
-            } else {
-                timeLeftPsych = '🔒 Доступ закончился';
-                timeColorPsych = '#e74c3c';
-            }
-        }
-        let timeLeftTutor = '—', timeColorTutor = '#27ae60';
-        if (data.tutor_end) {
-            const diff = new Date(data.tutor_end) - new Date();
-            if (diff > 0) {
-                const days = Math.floor(diff / (1000*60*60*24));
-                const hours = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
-                const minutes = Math.floor((diff % (1000*60*60)) / (1000*60));
-                timeLeftTutor = `${days}д ${hours}ч ${minutes}м`;
-                timeColorTutor = '#27ae60';
-            } else {
-                timeLeftTutor = '🔒 Доступ закончился';
-                timeColorTutor = '#e74c3c';
-            }
-        }
-        card.innerHTML = `
-            <div class="row"><span class="label">Имя</span><span class="value">${data.name || 'Пользователь'}</span></div>
-            <div class="row"><span class="label">Психолог</span><span class="value">${subStatusPsych}</span></div>
-            <div class="row"><span class="label">До психолога</span><span class="value" style="color:${timeColorPsych}">${timeLeftPsych}</span></div>
-            <div class="row"><span class="label">Наставник</span><span class="value">${subStatusTutor}</span></div>
-            <div class="row"><span class="label">До наставника</span><span class="value" style="color:${timeColorTutor}">${timeLeftTutor}</span></div>
-            <div class="row"><span class="label">Минуты лекций</span><span class="value">${data.tutor_minutes_balance || 0}</span></div>
-            <div class="row"><span class="label">Всего сессий</span><span class="value">${data.session_count || 0}</span></div>
-            <div class="row"><span class="label">Среднее настроение</span><span class="value">${data.avg_mood || '—'}/10</span></div>
-            <div class="row"><span class="label">Код для пары</span><span class="value">${data.partner_code || 'Нет'}</span></div>
-            <div class="row"><span class="label">Голос Вероники</span><span class="value">${data.voice_responses_enabled ? '✅ Включён' : '❌ Выключен'}</span></div>
-        `;
-        document.getElementById('profileEmail').textContent = data.email || '—';
-        document.getElementById('profilePhone').textContent = data.phone || '—';
-    } catch (e) { card.innerHTML = '<div class="status-text">❌ Ошибка</div>'; }
-}
-
-// === ТАРИФЫ ===
-async function loadTariffs() {
-    const container = document.getElementById('tariffsList');
-    try {
-        const data = await apiRequest(`${API_BASE}/tariffs`);
-        if (!data) return;
-        const tariffs = data.tariffs;
-        let html = '';
-        for (const [key, tariff] of Object.entries(tariffs)) {
-            html += `<div class="tariff-card"><div class="price">${tariff.price} ₽</div><div>${tariff.name}</div><div style="font-size:12px;color:#888;">${tariff.period}</div><button class="btn" style="width:100%;margin-top:6px;font-size:12px;padding:8px;" onclick="subscribe('${key}')">Выбрать</button></div>`;
-        }
-        container.innerHTML = html;
-    } catch (e) { container.innerHTML = '<div class="status-text">❌ Ошибка</div>'; }
-}
-
-async function subscribe(plan) {
-    const btns = document.querySelectorAll('.tariff-card .btn');
-    let btn = null;
-    btns.forEach(b => { if (b.textContent !== '⏳...') btn = b; });
-    if (!btn) return;
-    btn.textContent = '⏳...';
-    btn.disabled = true;
-    let endpoint = '/subscribe/psychologist';
-    if (plan.startsWith('tutor')) endpoint = '/subscribe/tutor';
-    try {
-        const data = await apiRequest(`${API_BASE}${endpoint}`, {
-            method: 'POST',
-            body: `plan=${plan}`
-        });
-        if (!data) return;
-        alert(`✅ Подписка оформлена!\nДо: ${new Date(data.end).toLocaleDateString()}`);
-        loadProfile();
-        document.getElementById('blockedOverlay').classList.remove('show');
-        document.getElementById('voiceLimitIndicator').style.display = 'none';
-        document.getElementById('uploadLimitIndicator').style.display = 'none';
-    } catch (e) { alert('❌ Ошибка'); }
-    btn.textContent = 'Выбрать';
-    btn.disabled = false;
-}
-
-// === СБРОС ПОДПИСКИ ===
-async function resetTrial() {
-    if (!confirm('Сбросить подписку на пробный период?')) return;
-    try {
-        const data = await apiRequest(`${API_BASE}/reset_trial`, { method: 'POST' });
-        if (data && data.status === 'ok') {
-            alert('✅ Пробный период восстановлен! Страница обновится.');
-            location.reload();
-        } else {
-            alert('❌ Ошибка сброса');
-        }
-    } catch (e) { alert('❌ Ошибка: ' + e.message); }
-}
-
-// === НАСТРОЙКИ ===
-async function loadSettings() {
-    try {
-        const data = await apiRequest(`${API_BASE}/profile`);
-        if (!data) return;
-        document.getElementById('settingsName').value = data.name || '';
-        document.getElementById('settingsVoice').checked = data.voice_responses_enabled !== false;
-        const mode = localStorage.getItem('voiceMode') || 'text';
-        document.getElementById('voiceMode').value = mode;
-    } catch (e) { console.error('Ошибка загрузки настроек'); }
-}
-
-async function saveSettings() {
-    const name = document.getElementById('settingsName').value.trim();
-    const voice = document.getElementById('settingsVoice').checked;
-    const voiceMode = document.getElementById('voiceMode').value;
-    localStorage.setItem('voiceMode', voiceMode);
-    try {
-        const formData = new URLSearchParams();
-        if (name) formData.append('name', name);
-        formData.append('voice_responses', voice);
-        await apiRequest(`${API_BASE}/settings/update`, {
-            method: 'POST',
-            body: formData
-        });
-        alert('✅ Настройки сохранены!');
-        loadProfile();
-        if (name) userName = name;
-    } catch (e) { alert('❌ Ошибка сохранения'); }
-}
-
-async function deleteAllData() {
-    if (!confirm('Вы уверены, что хотите стереть все данные?')) return;
-    if (!confirm('Точно? Все сессии и история будут удалены.')) return;
-    try {
-        await apiRequest(`${API_BASE}/settings/delete_all`, { method: 'POST' });
-        alert('✅ Все данные удалены!');
-        loadPsychologistHistory();
-        loadTutorHistory();
-    } catch (e) { alert('❌ Ошибка'); }
-}
-
-// === ПОДДЕРЖКА ===
-async function loadSupportMessages() {
-    const container = document.getElementById('supportMessages');
-    try {
-        const data = await apiRequest(`${API_BASE}/support/messages`);
-        if (!data) return;
-        if (!data.messages || data.messages.length === 0) {
-            container.innerHTML = '<div style="text-align:center;color:#888;font-size:13px;padding:20px;">Нет сообщений</div>';
-            return;
-        }
-        container.innerHTML = data.messages.map(m => `
-            <div class="support-msg ${m.is_from_user ? 'user' : 'admin'}">
-                ${m.text}
-                ${m.reply ? `<div style="margin-top:4px; color:#27ae60; font-style:italic;">Ответ: ${m.reply}</div>` : ''}
-                <div class="time">${new Date(m.date).toLocaleString()}</div>
-            </div>
-        `).join('');
-        container.scrollTop = container.scrollHeight;
-    } catch (e) { container.innerHTML = '<div style="text-align:center;color:#888;font-size:13px;padding:20px;">Ошибка загрузки</div>'; }
-}
-
-async function sendSupportMessage() {
-    const input = document.getElementById('supportInput');
-    const text = input.value.trim();
-    if (!text) return;
-    input.value = '';
-    try {
-        await apiRequest(`${API_BASE}/support/send`, {
-            method: 'POST',
-            body: `text=${encodeURIComponent(text)}`
-        });
-        loadSupportMessages();
-    } catch (e) { alert('Ошибка отправки'); }
-}
-
-// === ИСТОРИЯ ПСИХОЛОГА ===
-async function loadPsychologistHistory() {
-    const container = document.getElementById('historyListPsych');
-    container.innerHTML = '<div class="status-text">Загрузка...</div>';
-    try {
-        const data = await apiRequest(`${API_BASE}/history`);
-        if (!data) return;
-        if (!data.sessions || data.sessions.length === 0) {
-            container.innerHTML = '<div class="status-text">📭 История пуста</div>';
-            return;
-        }
-        container.innerHTML = data.sessions.map(s => `
-            <div class="history-item">
-                <div class="date">${new Date(s.date).toLocaleString()}</div>
-                <div class="text"><b>Вы:</b> ${s.text || '—'}</div>
-                <div class="text"><b>Вероника:</b> ${s.response ? s.response.substring(0, 100) + '...' : '—'}</div>
-                ${s.mood_score ? `<div class="text" style="color:#888;font-size:12px;">Настроение: ${s.mood_score}/10</div>` : ''}
-            </div>
-        `).join('');
-    } catch (e) { container.innerHTML = '<div class="status-text">❌ Ошибка</div>'; }
-}
-
-// === НАСТАВНИК: ОТПРАВКА СООБЩЕНИЯ ===
-async function sendTutorMessage() {
-    const input = document.getElementById('tutorInput');
-    const text = input.value.trim();
-    if (!text) return;
-    const messages = document.getElementById('tutorMessages');
-    const userMsg = document.createElement('div');
-    userMsg.className = 'message user';
-    userMsg.textContent = text;
-    messages.appendChild(userMsg);
-    messages.scrollTop = messages.scrollHeight;
-    input.value = '';
-    document.getElementById('tutorSendBtn').disabled = true;
-    document.getElementById('tutorStatus').textContent = '🔄 Наставник думает...';
-    const subject = document.getElementById('tutorSubject').value;
-    try {
-        const result = await apiRequest(`${API_BASE}/tutor/chat`, {
-            method: 'POST',
-            body: `text=${encodeURIComponent(text)}&subject=${encodeURIComponent(subject)}&is_live=${isLiveMode}`
-        });
-        if (!result) return;
-        if (result.requires_payment) {
-            document.getElementById('tutorStatus').textContent = '🔒 Доступ заблокирован.';
-            document.getElementById('blockedOverlay').classList.add('show');
-            document.getElementById('tutorSendBtn').disabled = false;
-            return;
-        }
-        if (result.requires_minutes) {
-            document.getElementById('tutorStatus').textContent = '⏱️ Недостаточно минут для лекции. Купите пакет минут.';
-            document.getElementById('tutorSendBtn').disabled = false;
-            return;
-        }
-        if (result.error) throw new Error(result.error);
-        const botMsg = document.createElement('div');
-        botMsg.className = 'message bot';
-        botMsg.innerHTML = result.response || 'Извините, я не поняла.';
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'copy-btn';
-        copyBtn.textContent = '📋 Копировать';
-        copyBtn.onclick = () => copyText(result.response);
-        botMsg.appendChild(copyBtn);
-        const noteBtn = document.createElement('button');
-        noteBtn.className = 'note-btn';
-        noteBtn.textContent = '📝 Заметка';
-        noteBtn.onclick = () => openNoteModal(result.session_id || 0, result.response);
-        botMsg.appendChild(noteBtn);
-        if (result.audio) {
-            const controls = document.createElement('span');
-            controls.className = 'audio-controls';
-            const playBtn = document.createElement('button');
-            playBtn.className = 'btn btn-secondary btn-small';
-            playBtn.textContent = '🔊 Озвучить';
-            playBtn.onclick = () => playAudio(result.audio);
-            const stopBtnEl = document.createElement('button');
-            stopBtnEl.className = 'btn btn-secondary btn-small';
-            stopBtnEl.textContent = '⏹ Стоп';
-            stopBtnEl.onclick = () => stopAudio();
-            controls.appendChild(playBtn);
-            controls.appendChild(stopBtnEl);
-            botMsg.appendChild(controls);
-        }
-        messages.appendChild(botMsg);
-        messages.scrollTop = messages.scrollHeight;
-        document.getElementById('tutorStatus').textContent = '';
-        loadLimits();
-        if (isLiveMode) {
-            document.getElementById('tutorLiveStatus').style.display = 'inline';
-            document.getElementById('tutorLiveStatus').textContent = `🔴 Лекция активна (осталось ${result.minutes_balance || 0} мин)`;
-        }
-    } catch (e) { document.getElementById('tutorStatus').textContent = '❌ ' + e.message; }
-    document.getElementById('tutorSendBtn').disabled = false;
-}
-
-// === НАСТАВНИК: ЛЕКЦИЯ ===
-function toggleLiveMode() {
-    isLiveMode = !isLiveMode;
-    const btn = document.getElementById('tutorLiveBtn');
-    const status = document.getElementById('tutorLiveStatus');
-    if (isLiveMode) {
-        btn.classList.add('btn-active');
-        btn.textContent = '🎓 Лекция (вкл)';
-        status.style.display = 'inline';
-        status.textContent = '🔴 Лекция активна';
-    } else {
-        btn.classList.remove('btn-active');
-        btn.textContent = '🎓 Лекция';
-        status.style.display = 'none';
-    }
-}
-
-// === НАСТАВНИК: ГРАММАТИКА ===
-async function sendGrammarMessage() {
-    const input = document.getElementById('grammarInput');
-    const text = input.value.trim();
-    if (!text) return;
-    const messages = document.getElementById('grammarMessages');
-    const userMsg = document.createElement('div');
-    userMsg.className = 'message user';
-    userMsg.textContent = text;
-    messages.appendChild(userMsg);
-    messages.scrollTop = messages.scrollHeight;
-    input.value = '';
-    document.getElementById('grammarSendBtn').disabled = true;
-    document.getElementById('grammarStatus').textContent = '🔄 Проверка...';
-    try {
-        const result = await apiRequest(`${API_BASE}/tutor/grammar`, {
-            method: 'POST',
-            body: `text=${encodeURIComponent(text)}`
-        });
-        if (!result) return;
-        if (result.requires_payment) {
-            document.getElementById('grammarStatus').textContent = '🔒 Доступ заблокирован.';
-            document.getElementById('blockedOverlay').classList.add('show');
-            document.getElementById('grammarSendBtn').disabled = false;
-            return;
-        }
-        if (result.error) throw new Error(result.error);
-        const botMsg = document.createElement('div');
-        botMsg.className = 'message bot';
-        botMsg.innerHTML = result.response || 'Извините, я не поняла.';
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'copy-btn';
-        copyBtn.textContent = '📋 Копировать';
-        copyBtn.onclick = () => copyText(result.response);
-        botMsg.appendChild(copyBtn);
-        messages.appendChild(botMsg);
-        messages.scrollTop = messages.scrollHeight;
-        document.getElementById('grammarStatus').textContent = '';
-        loadLimits();
-    } catch (e) { document.getElementById('grammarStatus').textContent = '❌ ' + e.message; }
-    document.getElementById('grammarSendBtn').disabled = false;
-}
-
-// === НАСТАВНИК: ИСТОРИЯ ===
-async function loadTutorHistory() {
-    const list = document.getElementById('historyList');
-    list.innerHTML = '<div class="status-text">Загрузка...</div>';
-    const subject = document.getElementById('historySearchSubject').value;
-    const dateFrom = document.getElementById('historyDateFrom').value;
-    const dateTo = document.getElementById('historyDateTo').value;
-    try {
-        let url = `${API_BASE}/tutor/history?`;
-        if (subject) url += `&subject=${encodeURIComponent(subject)}`;
-        if (dateFrom) url += `&date_from=${encodeURIComponent(dateFrom)}`;
-        if (dateTo) url += `&date_to=${encodeURIComponent(dateTo)}`;
-        const data = await apiRequest(url);
-        if (!data) return;
-        if (!data.sessions || data.sessions.length === 0) {
-            list.innerHTML = '<div class="status-text">📭 Нет сессий наставника</div>';
-            return;
-        }
-        const grouped = data.sessions.reduce((acc, s) => {
-            const date = new Date(s.date).toLocaleDateString();
-            if (!acc[date]) acc[date] = [];
-            acc[date].push(s);
-            return acc;
-        }, {});
-        let html = '';
-        for (const [date, sessions] of Object.entries(grouped)) {
-            html += `<div style="margin-bottom:12px;"><div style="font-weight:600;color:#1a2a6c;margin-bottom:6px;">📅 ${date}</div>`;
             sessions.forEach(s => {
-                html += `
-                    <div class="history-item">
-                        <div class="date">${new Date(s.date).toLocaleTimeString()} ${s.is_live ? '🎓 Лекция' : '📖 Занятие'} ${s.subject ? `· ${s.subject}` : ''}</div>
-                        <div class="text"><b>Вы:</b> ${s.text}</div>
-                        <div class="text"><b>Ответ:</b> ${s.response ? s.response.substring(0, 150) + '...' : '—'}</div>
-                        <div style="margin-top:4px;">
-                            <button class="btn btn-secondary btn-small" onclick="openMarkModal(${s.id})">🏷️ Пометка</button>
-                            <button class="btn btn-secondary btn-small" onclick="viewSession(${s.id})">📖 Детали</button>
-                        </div>
-                    </div>
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `
+                    <strong>${formatDate(s.date)}</strong>
+                    <p><strong>Вы:</strong> ${s.text}</p>
+                    <p><strong>Вероника:</strong> ${s.response}</p>
+                    ${s.mood_score ? `<p>Настроение: ${s.mood_score}/10</p>` : ''}
+                    ${s.subject ? `<p>Предмет: ${s.subject}</p>` : ''}
+                    ${s.is_live ? '<span class="badge">Лекция</span>' : ''}
                 `;
+                container.appendChild(div);
             });
-            html += `</div>`;
-        }
-        list.innerHTML = html;
-    } catch (e) { list.innerHTML = '<div class="status-text">❌ Ошибка</div>'; }
-}
-
-function clearHistoryFilters() {
-    document.getElementById('historySearchSubject').value = '';
-    document.getElementById('historyDateFrom').value = '';
-    document.getElementById('historyDateTo').value = '';
-    loadTutorHistory();
-}
-
-function viewSession(id) {
-    alert(`Просмотр сессии ${id} (в разработке)`);
-}
-
-// === ЗАМЕТКИ ===
-function openNoteModal(sessionId, selection) {
-    document.getElementById('noteSessionId').value = sessionId;
-    document.getElementById('noteSelection').value = selection || '';
-    document.getElementById('noteText').value = '';
-    document.getElementById('noteModal').classList.add('show');
-}
-
-function selectNoteColor(el) {
-    document.querySelectorAll('.color-picker .color-option').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
-    noteColor = el.dataset.color;
-}
-
-async function saveNote() {
-    const sessionId = document.getElementById('noteSessionId').value;
-    const selection = document.getElementById('noteSelection').value;
-    const text = document.getElementById('noteText').value.trim();
-    if (!text) { alert('Введите текст заметки'); return; }
-    try {
-        const data = await apiRequest(`${API_BASE}/tutor/notes`, {
-            method: 'POST',
-            body: `session_id=${sessionId}&text=${encodeURIComponent(text)}&selection=${encodeURIComponent(selection)}&color=${noteColor}`
         });
-        if (data && data.status === 'ok') {
-            alert('✅ Заметка сохранена!');
-            closeNoteModal();
-            loadTutorHistory();
-        } else {
-            alert('❌ Ошибка сохранения');
-        }
-    } catch (e) { alert('❌ ' + e.message); }
 }
 
-function closeNoteModal() {
-    document.getElementById('noteModal').classList.remove('show');
-}
+document.getElementById('history-psycho').addEventListener('click', () => loadHistory('psychologist'));
+document.getElementById('history-tutor').addEventListener('click', () => loadHistory('tutor'));
 
-// === ПОМЕТКИ ===
-function openMarkModal(sessionId) {
-    document.getElementById('markSessionId').value = sessionId;
-    document.getElementById('markLabel').value = '';
-    document.getElementById('markModal').classList.add('show');
-}
-
-function selectMarkColor(el) {
-    document.querySelectorAll('.color-picker .color-option').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
-    markColor = el.dataset.color;
-}
-
-async function saveMark() {
-    const sessionId = document.getElementById('markSessionId').value;
-    const label = document.getElementById('markLabel').value.trim();
-    try {
-        const data = await apiRequest(`${API_BASE}/tutor/marks`, {
-            method: 'POST',
-            body: `session_id=${sessionId}&color=${markColor}&label=${encodeURIComponent(label)}`
+// ============================================================
+// Настройки
+// ============================================================
+document.getElementById('settings-save').addEventListener('click', () => {
+    const name = document.getElementById('settings-name').value;
+    const voice = document.getElementById('settings-voice').checked;
+    const form = new FormData();
+    form.append('name', name);
+    form.append('voice_responses', voice ? 'true' : 'false');
+    showLoader(true);
+    fetch('/settings/update', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: form })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                alert('Настройки сохранены');
+                loadProfile();
+            }
+            showLoader(false);
         });
-        if (data && data.status === 'ok') {
-            alert('✅ Пометка сохранена!');
-            closeMarkModal();
-            loadTutorHistory();
-        } else {
-            alert('❌ Ошибка сохранения');
-        }
-    } catch (e) { alert('❌ ' + e.message); }
-}
+});
 
-function closeMarkModal() {
-    document.getElementById('markModal').classList.remove('show');
-}
+document.getElementById('settings-delete').addEventListener('click', () => {
+    if (!confirm('Удалить все данные (сессии, эмоции, заметки, пометки)?')) return;
+    showLoader(true);
+    fetch('/settings/delete_all', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(data => {
+            alert('Данные удалены');
+            showLoader(false);
+        });
+});
 
-// ===== ИСПРАВЛЕННАЯ ФУНКЦИЯ ПСИХОЛОГА =====
-async function sendPsychologistMessage() {
-    const input = document.getElementById('psychologistInput');
-    const text = input.value.trim();
+// ============================================================
+// Пары
+// ============================================================
+document.getElementById('pair-invite').addEventListener('click', () => {
+    apiCall('POST', '/pair/invite')
+        .then(data => {
+            document.getElementById('pair-status').innerHTML = `Ваш код: <strong>${data.code}</strong>`;
+        });
+});
+
+document.getElementById('pair-connect').addEventListener('click', () => {
+    const code = document.getElementById('pair-code').value.trim();
+    if (!code) return alert('Введите код');
+    const form = new FormData();
+    form.append('code', code);
+    showLoader(true);
+    fetch('/pair/connect', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: form })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'connected') {
+                document.getElementById('pair-status').innerHTML = `Связаны с ${data.partner_name}`;
+            } else {
+                alert(data.detail || 'Ошибка');
+            }
+            showLoader(false);
+        });
+});
+
+document.getElementById('pair-disconnect').addEventListener('click', () => {
+    showLoader(true);
+    fetch('/pair/disconnect', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('pair-status').innerHTML = 'Отключены';
+            showLoader(false);
+        });
+});
+
+document.getElementById('pair-send').addEventListener('click', () => {
+    const text = document.getElementById('pair-input').value.trim();
     if (!text) return;
-    const messages = document.getElementById('psychologistMessages');
-    const userMsg = document.createElement('div');
-    userMsg.className = 'message user';
-    userMsg.textContent = text;
-    messages.appendChild(userMsg);
-    messages.scrollTop = messages.scrollHeight;
-    input.value = '';
-    document.getElementById('psychologistSendBtn').disabled = true;
-    document.getElementById('psychologistStatus').textContent = '🔄 Вероника пишет...';
-    try {
-        const result = await apiRequest(`${API_BASE}/psychologist/chat`, {
-            method: 'POST',
-            body: `text=${encodeURIComponent(text)}`
+    const form = new FormData();
+    form.append('text', text);
+    showLoader(true);
+    fetch('/pair/session', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: form })
+        .then(r => r.json())
+        .then(data => {
+            const chat = document.getElementById('pair-chat');
+            addMessage(chat, text, true);
+            if (data.response) addMessage(chat, data.response, false);
+            else if (data.error) addMessage(chat, '❌ ' + data.error, false);
+            showLoader(false);
         });
-        if (!result) return;
-        if (result.requires_payment) {
-            document.getElementById('psychologistStatus').textContent = '🔒 Доступ заблокирован.';
-            document.getElementById('blockedOverlay').classList.add('show');
-            document.getElementById('psychologistSendBtn').disabled = false;
-            return;
-        }
-        if (result.error) throw new Error(result.error);
-        const botMsg = document.createElement('div');
-        botMsg.className = 'message bot';
-        botMsg.textContent = result.response || 'Извините, я не поняла.';
-        if (result.audio) {
-            const controls = document.createElement('span');
-            controls.className = 'audio-controls';
-            const playBtn = document.createElement('button');
-            playBtn.className = 'btn btn-secondary btn-small';
-            playBtn.textContent = '🔊 Озвучить';
-            playBtn.onclick = () => playAudio(result.audio);
-            const stopBtnEl = document.createElement('button');
-            stopBtnEl.className = 'btn btn-secondary btn-small';
-            stopBtnEl.textContent = '⏹ Стоп';
-            stopBtnEl.onclick = () => stopAudio();
-            controls.appendChild(playBtn);
-            controls.appendChild(stopBtnEl);
-            botMsg.appendChild(controls);
-        }
-        messages.appendChild(botMsg);
-        messages.scrollTop = messages.scrollHeight;
-        loadLimits();
-        loadEmotions();
-    } catch (e) { document.getElementById('psychologistStatus').textContent = '❌ ' + e.message; }
-    document.getElementById('psychologistSendBtn').disabled = false;
-    document.getElementById('psychologistStatus').textContent = '';
-}
+});
 
-// === ЭМОЦИИ ===
-async function loadEmotions() {
-    try {
-        const data = await apiRequest(`${API_BASE}/emotions`);
-        if (!data) return;
-    } catch (e) {}
-}
-
-// === АУДИО ===
-function playAudio(hexData) {
-    if (currentAudio && !currentAudio.paused) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-    }
-    try {
-        const bytes = new Uint8Array(hexData.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-        const blob = new Blob([bytes], { type: 'audio/mp3' });
-        const url = URL.createObjectURL(blob);
-        currentAudio = new Audio(url);
-        currentAudio.play();
-        currentAudio.onended = () => { currentAudio = null; };
-    } catch (e) { console.log('Ошибка воспроизведения', e); }
-}
-
-function stopAudio() {
-    if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-        currentAudio = null;
-    }
-}
-
-// === КОПИРОВАНИЕ ===
-function copyText(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(() => {
-            alert('📋 Текст скопирован в буфер обмена!');
-        }).catch(() => {
-            fallbackCopy(text);
+// ============================================================
+// Поддержка
+// ============================================================
+document.getElementById('support-send').addEventListener('click', () => {
+    const text = document.getElementById('support-input').value.trim();
+    if (!text) return;
+    const form = new FormData();
+    form.append('text', text);
+    showLoader(true);
+    fetch('/support/send', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: form })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                document.getElementById('support-input').value = '';
+                loadSupportMessages();
+            }
+            showLoader(false);
         });
-    } else {
-        fallbackCopy(text);
-    }
+});
+
+function loadSupportMessages() {
+    apiCall('GET', '/support/messages')
+        .then(data => {
+            const container = document.getElementById('support-messages');
+            container.innerHTML = '';
+            (data.messages || []).forEach(m => {
+                const div = document.createElement('div');
+                div.className = `message ${m.is_from_user ? 'user' : 'bot'}`;
+                div.innerHTML = `<strong>${m.is_from_user ? 'Вы' : 'Поддержка'}:</strong> ${m.text} ${m.reply ? '<br><em>Ответ: ' + m.reply + '</em>' : ''}`;
+                container.appendChild(div);
+            });
+        });
 }
 
-function fallbackCopy(text) {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    document.body.appendChild(textarea);
-    textarea.select();
-    try {
-        document.execCommand('copy');
-        alert('📋 Текст скопирован в буфер обмена!');
-    } catch (e) {
-        alert('❌ Не удалось скопировать текст');
-    }
-    document.body.removeChild(textarea);
+// ============================================================
+// Админка
+// ============================================================
+document.getElementById('admin-stats').addEventListener('click', () => {
+    const password = document.getElementById('admin-pass').value;
+    if (!password) return alert('Введите пароль админа');
+    showLoader(true);
+    fetch('/admin/stats?password=' + encodeURIComponent(password))
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('admin-result').innerHTML = `
+                <p>Пользователей: ${data.users}</p>
+                <p>Сессий: ${data.sessions}</p>
+                <p>Платежей: ${data.payments}</p>
+                <p>Активных за сегодня: ${data.active_today}</p>
+            `;
+            showLoader(false);
+        });
+});
+
+// ============================================================
+// Инициализация
+// ============================================================
+if (token) {
+    loadProfile();
+    showTab('psychologist');
+} else {
+    showTab('auth');
 }
 
-// === ЭКСТРЕННАЯ ПОМОЩЬ ===
-function showEmergency() { document.getElementById('emergencyModal').style.display = 'flex'; }
-function showInstructions() { document.getElementById('instructionsModal').style.display = 'flex'; }
-
-const defaultTips = [
-    "💬 Психолог — поддержка и забота.",
-    "📚 Наставник — репетитор по всем предметам.",
-    "🎓 Лекция — длинное объяснение (расходует минуты).",
-    "📝 Сохраняйте важные фрагменты в заметки.",
-    "🏷️ Пометки помогут организовать сессии.",
-    "✍️ Грамматика — проверка текста на ошибки.",
-    "🔥 Скоро приложение появится в ВКонтакте!"
-];
-
-console.log('✅ Приложение загружено! API: ' + API_BASE);
+// Обновляем лимиты каждые 30 секунд
+setInterval(loadLimits, 30000);
 </script>
 </body>
 </html>
