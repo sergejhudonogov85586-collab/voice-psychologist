@@ -10,7 +10,7 @@ from email.mime.text import MIMEText
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import desc, func, text   # <-- ВАЖНО: импорт text
+from sqlalchemy import desc, func, text
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from jose import JWTError, jwt
@@ -555,7 +555,7 @@ async def get_psychologist_history(current_user: User = Depends(get_current_user
         logger.error(f"Ошибка в /history: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# === ПСИХОЛОГ ===
+# === ПСИХОЛОГ: текстовый чат ===
 @app.post("/psychologist/chat")
 async def psychologist_chat(text: str = Form(...), current_user: User = Depends(get_current_user), db = Depends(get_db)):
     if not has_psychologist_access(current_user):
@@ -580,6 +580,77 @@ async def psychologist_chat(text: str = Form(...), current_user: User = Depends(
     _, upload_used, upload_limit = check_upload_limit(current_user.id, db)
     
     return {
+        "response": response_text,
+        "audio": audio_data.hex() if audio_data else None,
+        "limits": {
+            "voice_used": voice_used,
+            "voice_limit": voice_limit,
+            "upload_used": upload_used,
+            "upload_limit": upload_limit
+        }
+    }
+
+# === ПСИХОЛОГ: голосовой чат (распознавание речи) ===
+@app.post("/psychologist/voice")
+async def psychologist_voice(
+    audio: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    # Проверка доступа
+    if not has_psychologist_access(current_user):
+        return {"error": "Доступ к психологу ограничен. Оформите подписку.", "requires_payment": True}
+    
+    # Проверка лимита голосовых сессий
+    is_allowed, used, limit = check_voice_limit(current_user.id, db)
+    if not is_allowed:
+        return {
+            "error": f"Вы исчерпали дневной лимит голосовых сессий ({limit}/{limit}).",
+            "requires_payment": True,
+            "limits": {"voice_used": used, "voice_limit": limit}
+        }
+    
+    # Чтение файла
+    audio_bytes = await audio.read()
+    if len(audio_bytes) > 10 * 1024 * 1024:
+        return {"error": "Файл слишком большой. Максимум 10 МБ."}
+    
+    # Распознавание речи
+    recognized_text = recognize_speech(audio_bytes, audio.filename)
+    if recognized_text.startswith("Ошибка") or not recognized_text:
+        return {"error": "Не удалось распознать речь."}
+    
+    # Отправка распознанного текста в GPT
+    response_text = call_yandex_gpt(recognized_text, "psychologist", current_user.name)
+    mood_score = extract_mood_score(response_text)
+    if mood_score:
+        response_text = re.sub(r'\s*\[Оценка настроения:\s*\d+\s*/10\]\s*', '', response_text).strip()
+    
+    # Сохранение сессии
+    session = Session(
+        user_id=current_user.id,
+        mode="psychologist",
+        text=recognized_text,
+        response=response_text,
+        mood_score=mood_score
+    )
+    db.add(session)
+    db.commit()
+    
+    # Инкремент лимита голосовых сессий
+    increment_voice_usage(current_user.id, db)
+    
+    # Синтез речи ответа
+    audio_data = None
+    if current_user.voice_responses_enabled:
+        audio_data = synthesize_speech(response_text)
+    
+    # Лимиты для ответа
+    _, voice_used, voice_limit = check_voice_limit(current_user.id, db)
+    _, upload_used, upload_limit = check_upload_limit(current_user.id, db)
+    
+    return {
+        "recognized_text": recognized_text,
         "response": response_text,
         "audio": audio_data.hex() if audio_data else None,
         "limits": {
