@@ -6,7 +6,6 @@
   <title>Самопознание</title>
   <script src="https://vk.com/js/api/openapi.js?169"></script>
   <style>
-    /* --- Стили --- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -93,6 +92,8 @@
     .btn-success { background: #27ae60; box-shadow: 0 4px 12px rgba(39,174,96,0.3); }
     .btn-warning { background: #f39c12; box-shadow: 0 4px 12px rgba(243,156,18,0.3); }
     .btn-small { padding: 6px 14px; font-size: 12px; border-radius: 20px; }
+    .btn-trial { background: #8e44ad; box-shadow: 0 4px 12px rgba(142,68,173,0.3); }
+    .btn-trial:hover { background: #6c3483; }
     .tabs {
       display: flex;
       gap: 4px;
@@ -188,7 +189,7 @@
       border: 1px solid rgba(26,42,108,0.06);
     }
     .message .audio-controls { display: inline-flex; gap: 4px; margin-left: 8px; align-items: center; }
-    .message .copy-btn, .message .note-btn {
+    .message .copy-btn, .message .note-btn, .message .mark-btn {
       background: transparent;
       border: none;
       color: #1a2a6c;
@@ -199,7 +200,7 @@
       transition: 0.1s;
       margin-left: 6px;
     }
-    .message .copy-btn:hover, .message .note-btn:hover { background: rgba(26,42,108,0.06); }
+    .message .copy-btn:hover, .message .note-btn:hover, .message .mark-btn:hover { background: rgba(26,42,108,0.06); }
 
     .input-area {
       display: flex;
@@ -461,6 +462,7 @@
 
   <!-- ========== ПСИХОЛОГ ========== -->
   <div id="tab-psychologist" class="tab-content active">
+    <div id="psychologistTrialBanner" style="margin-bottom:12px;"></div>
     <div class="chat-area" id="psychologistMessages">
       <div class="message bot">👋 Привет! Я Вероника — ваш психолог. Расскажите, что вас тревожит, или загрузите аудиозапись.</div>
     </div>
@@ -473,7 +475,6 @@
         🎤 Загрузить аудио
         <input type="file" id="psychologistAudioInput" accept="audio/*">
       </label>
-      <button class="btn btn-secondary" id="psychologistVoiceBtn">🎙️ Записать</button>
     </div>
     <div class="status-text" id="psychologistStatus"></div>
     <audio id="psychologistAudioPlayback" controls style="width:100%;margin-top:8px;display:none;"></audio>
@@ -481,6 +482,7 @@
 
   <!-- ========== НАСТАВНИК ========== -->
   <div id="tab-tutor" class="tab-content">
+    <div id="tutorTrialBanner" style="margin-bottom:12px;"></div>
     <div class="subtabs">
       <button class="subtab active" data-subtab="tutor-chat">📖 Занятие</button>
       <button class="subtab" data-subtab="tutor-history">📜 История</button>
@@ -503,6 +505,7 @@
           <option value="Другое">Другое</option>
         </select>
         <button id="tutorLiveBtn" class="btn-secondary">🎓 Лекция</button>
+        <button id="tutorStartLectureBtn" class="btn btn-warning">▶ Начать лекцию</button>
         <span id="tutorLiveStatus" style="font-size:12px;color:#8892a8;display:none;">🔴 Лекция активна</span>
       </div>
       <div class="chat-area" id="tutorMessages">
@@ -622,8 +625,14 @@
         </div>
       </div>
     </div>
-    <div class="card">
+    <div class="card" id="psychologistHistoryCard">
       <h3 style="margin-bottom:12px;">📜 История сессий (психолог)</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <input type="date" id="psychHistoryDateFrom" style="padding:10px 16px;border:2px solid rgba(26,42,108,0.08);border-radius:30px;font-size:14px;outline:none;">
+        <input type="date" id="psychHistoryDateTo" style="padding:10px 16px;border:2px solid rgba(26,42,108,0.08);border-radius:30px;font-size:14px;outline:none;">
+        <button class="btn btn-small" onclick="loadPsychologistHistory()">🔍 Найти</button>
+        <button class="btn btn-secondary btn-small" onclick="clearPsychHistoryFilters()">✖️</button>
+      </div>
       <div id="historyListPsych"><div class="status-text">Загрузка...</div></div>
     </div>
   </div>
@@ -670,11 +679,32 @@
   </div>
 </div>
 
-<!-- Заметка -->
+<!-- Модалка деталей сессии -->
+<div class="modal-overlay" id="sessionDetailModal" style="display:none;">
+  <div class="modal">
+    <h2 id="detailTitle">📖 Детали сессии</h2>
+    <input type="hidden" id="detailSessionId">
+    <div style="margin-bottom:8px;"><strong>Дата:</strong> <span id="detailDate"></span></div>
+    <div style="margin-bottom:8px;"><strong>Предмет:</strong> <span id="detailSubject">—</span></div>
+    <div style="margin-bottom:8px;"><strong>Тип:</strong> <span id="detailType">Занятие</span></div>
+    <hr style="border-color:rgba(26,42,108,0.06);margin:12px 0;">
+    <div style="margin-bottom:8px;"><strong>Ваш вопрос:</strong></div>
+    <div style="background:#f8faff;border-radius:16px;padding:12px;margin-bottom:12px;white-space:pre-wrap;word-wrap:break-word;" id="detailText"></div>
+    <div style="margin-bottom:8px;"><strong>Ответ Вероники:</strong></div>
+    <div style="background:#f8faff;border-radius:16px;padding:12px;margin-bottom:12px;white-space:pre-wrap;word-wrap:break-word;" id="detailResponse"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <button class="btn btn-secondary btn-small" onclick="openNoteModalFromDetail()">📝 Заметка</button>
+      <button class="btn btn-secondary btn-small" onclick="openMarkModalFromDetail()">🏷️ Пометка</button>
+    </div>
+    <button class="btn btn-secondary" style="width:100%;margin-top:12px;" onclick="closeDetailModal()">Закрыть</button>
+  </div>
+</div>
+
+<!-- Модалка заметки -->
 <div id="noteModal" class="note-modal">
   <div class="modal">
     <h2>📝 Заметка</h2>
-    <p style="color:#5a6b8a;font-size:13px;">Добавьте заметку к этому ответу</p>
+    <p style="color:#5a6b8a;font-size:13px;">Добавьте заметку к этой сессии</p>
     <input type="hidden" id="noteSessionId">
     <input type="hidden" id="noteSelection">
     <textarea id="noteText" placeholder="Текст заметки..." rows="4" style="width:100%;padding:14px;border:2px solid rgba(26,42,108,0.08);border-radius:20px;margin:8px 0;font-size:14px;outline:none;"></textarea>
@@ -690,7 +720,7 @@
   </div>
 </div>
 
-<!-- Пометка -->
+<!-- Модалка пометки -->
 <div id="markModal" class="note-modal">
   <div class="modal">
     <h2>🏷️ Пометка</h2>
@@ -793,6 +823,7 @@ let markColor = 'blue';
 let currentPsychologistAudio = null;
 let currentTutorAudio = null;
 let currentGrammarAudio = null;
+let currentDetailSessionId = null;
 
 if (!token) {
     document.getElementById('authModal').style.display = 'flex';
@@ -936,7 +967,8 @@ function showTab(name) {
     document.getElementById('tab-' + name).classList.add('active');
     if (name === 'profile') { loadProfile(); loadTariffs(); loadMinutesPackages(); }
     if (name === 'settings') { loadSettings(); loadPsychologistHistory(); loadSupportMessages(); }
-    if (name === 'tutor') { loadTutorHistory(); }
+    if (name === 'tutor') { loadTutorHistory(); updateTrialBanners(); }
+    if (name === 'psychologist') { updateTrialBanners(); }
     if (name === 'pair') { loadPairStatus(); }
     document.getElementById('blockedOverlay').classList.remove('show');
 }
@@ -986,13 +1018,13 @@ function initApp() {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendPsychologistMessage(); }
     });
     document.getElementById('psychologistAudioInput').addEventListener('change', handlePsychologistAudio);
-    document.getElementById('psychologistVoiceBtn').addEventListener('click', startPsychologistRecording);
     // Наставник
     document.getElementById('tutorSendBtn').addEventListener('click', sendTutorMessage);
     document.getElementById('tutorInput').addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTutorMessage(); }
     });
     document.getElementById('tutorLiveBtn').addEventListener('click', toggleLiveMode);
+    document.getElementById('tutorStartLectureBtn').addEventListener('click', startLecture);
     document.getElementById('tutorFileInput').addEventListener('change', handleTutorFile);
     document.getElementById('tutorAudioInput').addEventListener('change', handleTutorAudio);
     // Грамматика
@@ -1017,6 +1049,12 @@ function initApp() {
     });
     document.getElementById('markModal').addEventListener('click', function(e) {
         if (e.target === this) closeMarkModal();
+    });
+    // Кнопки активации пробного периода
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('activate-trial-btn')) {
+            activateTrial(e.target.dataset.mode);
+        }
     });
 }
 
@@ -1092,6 +1130,50 @@ function checkAccess(data) {
     }
 }
 
+// ===== БАННЕРЫ ПРОБНОГО ПЕРИОДА =====
+function updateTrialBanners() {
+    // Обновляем баннеры в психологе и наставнике на основе данных профиля
+    loadProfile().then(() => {
+        // Баннеры обновляются в loadProfile через вызов updateTrialBannersUI
+    });
+}
+
+function updateTrialBannersUI(data) {
+    // Психолог
+    const psychoBanner = document.getElementById('psychologistTrialBanner');
+    const hasPsychoAccess = data.psychologist_subscription === 'premium' || (data.psychologist_end && new Date(data.psychologist_end) > new Date());
+    if (!hasPsychoAccess) {
+        psychoBanner.innerHTML = `<button class="btn btn-trial btn-small activate-trial-btn" data-mode="psychologist">🎁 Активировать пробный период (3 дня)</button>`;
+    } else {
+        psychoBanner.innerHTML = '';
+    }
+    // Наставник
+    const tutorBanner = document.getElementById('tutorTrialBanner');
+    const hasTutorAccess = data.tutor_subscription === 'premium' || (data.tutor_end && new Date(data.tutor_end) > new Date());
+    if (!hasTutorAccess) {
+        tutorBanner.innerHTML = `<button class="btn btn-trial btn-small activate-trial-btn" data-mode="tutor">🎁 Активировать пробный период (3 дня)</button>`;
+    } else {
+        tutorBanner.innerHTML = '';
+    }
+}
+
+// ===== АКТИВАЦИЯ ПРОБНОГО ПЕРИОДА =====
+async function activateTrial(mode) {
+    if (!confirm(`Активировать бесплатный пробный период (3 дня) для ${mode === 'psychologist' ? 'психолога' : 'наставника'}?`)) return;
+    try {
+        const data = await apiRequest(`${API_BASE}/reset_trial`, { method: 'POST' });
+        if (data && data.status === 'ok') {
+            alert('✅ Пробный период активирован! Обновите страницу для отображения.');
+            loadProfile();
+            updateTrialBanners();
+        } else {
+            alert('❌ Ошибка активации');
+        }
+    } catch (e) {
+        alert('❌ Ошибка: ' + e.message);
+    }
+}
+
 // ===== ЛИМИТЫ =====
 async function loadLimits() {
     try {
@@ -1156,6 +1238,8 @@ async function loadProfile() {
         `;
         document.getElementById('profileEmail').textContent = data.email || '—';
         document.getElementById('profilePhone').textContent = data.phone || '—';
+        // Обновляем баннеры
+        updateTrialBannersUI(data);
     } catch (e) { card.innerHTML = '<div class="status-text">❌ Ошибка</div>'; }
 }
 
@@ -1194,6 +1278,7 @@ async function subscribe(plan) {
         document.getElementById('blockedOverlay').classList.remove('show');
         document.getElementById('voiceLimitIndicator').style.display = 'none';
         document.getElementById('uploadLimitIndicator').style.display = 'none';
+        updateTrialBanners();
     } catch (e) { alert('❌ Ошибка'); }
     btn.textContent = 'Выбрать';
     btn.disabled = false;
@@ -1235,7 +1320,7 @@ async function buyMinutes(packageKey) {
     btn.disabled = false;
 }
 
-// ===== СБРОС ПОДПИСКИ =====
+// ===== СБРОС ПОДПИСКИ (тест) =====
 async function resetTrial() {
     if (!confirm('Сбросить подписку на пробный период?')) return;
     try {
@@ -1330,8 +1415,13 @@ async function sendSupportMessage() {
 async function loadPsychologistHistory() {
     const container = document.getElementById('historyListPsych');
     container.innerHTML = '<div class="status-text">Загрузка...</div>';
+    const dateFrom = document.getElementById('psychHistoryDateFrom').value;
+    const dateTo = document.getElementById('psychHistoryDateTo').value;
     try {
-        const data = await apiRequest(`${API_BASE}/history`);
+        let url = `${API_BASE}/history?`;
+        if (dateFrom) url += `&date_from=${encodeURIComponent(dateFrom)}`;
+        if (dateTo) url += `&date_to=${encodeURIComponent(dateTo)}`;
+        const data = await apiRequest(url);
         if (!data) return;
         if (!data.sessions || data.sessions.length === 0) {
             container.innerHTML = '<div class="status-text">📭 История пуста</div>';
@@ -1339,120 +1429,162 @@ async function loadPsychologistHistory() {
         }
         container.innerHTML = data.sessions.map(s => `
             <div class="history-item">
-                <div class="date">${new Date(s.date).toLocaleString()}</div>
+                <div class="date">${new Date(s.date).toLocaleString()} ${s.mood_score ? `· Настроение: ${s.mood_score}/10` : ''}</div>
                 <div class="text"><b>Вы:</b> ${s.text || '—'}</div>
                 <div class="text"><b>Вероника:</b> ${s.response ? s.response.substring(0, 100) + '...' : '—'}</div>
-                ${s.mood_score ? `<div class="text" style="color:#8892a8;font-size:12px;">Настроение: ${s.mood_score}/10</div>` : ''}
+                <div style="margin-top:4px;">
+                    <button class="btn btn-secondary btn-small" onclick="openDetailModal(${s.id}, 'psychologist')">📖 Детали</button>
+                    <button class="btn btn-secondary btn-small" onclick="openNoteModal(${s.id}, '')">📝 Заметка</button>
+                    <button class="btn btn-secondary btn-small" onclick="openMarkModal(${s.id})">🏷️ Пометка</button>
+                </div>
             </div>
         `).join('');
     } catch (e) { container.innerHTML = '<div class="status-text">❌ Ошибка</div>'; }
 }
 
-// =============================================================
-// ===== ПСИХОЛОГ: ОТПРАВКА СООБЩЕНИЯ =====
-async function sendPsychologistMessage() {
-    const input = document.getElementById('psychologistInput');
-    const text = input.value.trim();
-    if (!text) return;
-    const messages = document.getElementById('psychologistMessages');
-    addMessage(messages, text, true);
-    input.value = '';
-    document.getElementById('psychologistSendBtn').disabled = true;
-    document.getElementById('psychologistStatus').textContent = '🔄 Вероника пишет...';
-    try {
-        const result = await apiRequest(`${API_BASE}/psychologist/chat`, {
-            method: 'POST',
-            body: `text=${encodeURIComponent(text)}`
-        });
-        if (!result) return;
-        if (result.requires_payment) {
-            document.getElementById('psychologistStatus').textContent = '🔒 Доступ заблокирован.';
-            document.getElementById('blockedOverlay').classList.add('show');
-            document.getElementById('psychologistSendBtn').disabled = false;
-            return;
-        }
-        if (result.error) throw new Error(result.error);
-        const botMsg = createBotMessage(result.response, result.audio);
-        messages.appendChild(botMsg);
-        messages.scrollTop = messages.scrollHeight;
-        loadLimits();
-        loadPsychologistHistory();
-    } catch (e) { document.getElementById('psychologistStatus').textContent = '❌ ' + e.message; }
-    document.getElementById('psychologistSendBtn').disabled = false;
-    document.getElementById('psychologistStatus').textContent = '';
+function clearPsychHistoryFilters() {
+    document.getElementById('psychHistoryDateFrom').value = '';
+    document.getElementById('psychHistoryDateTo').value = '';
+    loadPsychologistHistory();
 }
 
-// ===== ПСИХОЛОГ: АУДИО (загрузка файла) =====
-async function handlePsychologistAudio(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const messages = document.getElementById('psychologistMessages');
-    addMessage(messages, `🎤 Загружено аудио: ${file.name} (анализирую...)`, true);
-    document.getElementById('psychologistStatus').textContent = '🔄 Распознаю и анализирую...';
-    const formData = new FormData();
-    formData.append('audio', file);
-    try {
-        const result = await fetch(`${API_BASE}/psychologist/voice`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: formData
-        }).then(r => r.json());
-        if (result.requires_payment) {
-            document.getElementById('psychologistStatus').textContent = '🔒 Доступ заблокирован.';
-            document.getElementById('blockedOverlay').classList.add('show');
-            return;
-        }
-        if (result.error) throw new Error(result.error);
-        const botMsg = createBotMessage(result.response, result.audio);
-        messages.appendChild(botMsg);
-        messages.scrollTop = messages.scrollHeight;
-        loadLimits();
-        loadPsychologistHistory();
-        document.getElementById('psychologistStatus').textContent = '';
-    } catch (e) {
-        document.getElementById('psychologistStatus').textContent = '❌ ' + e.message;
+// ===== МОДАЛКА ДЕТАЛЕЙ =====
+function openDetailModal(sessionId, mode) {
+    currentDetailSessionId = sessionId;
+    // Получаем данные сессии из истории (они уже есть на странице, но проще запросить заново)
+    const endpoint = mode === 'psychologist' ? '/history' : '/tutor/history';
+    apiRequest(`${API_BASE}${endpoint}?limit=1000`)
+        .then(data => {
+            const session = data.sessions.find(s => s.id === sessionId);
+            if (!session) {
+                alert('Сессия не найдена');
+                return;
+            }
+            document.getElementById('detailSessionId').value = sessionId;
+            document.getElementById('detailDate').textContent = new Date(session.date).toLocaleString();
+            document.getElementById('detailSubject').textContent = session.subject || '—';
+            document.getElementById('detailType').textContent = session.is_live ? '🎓 Лекция' : '📖 Занятие';
+            document.getElementById('detailText').textContent = session.text || '—';
+            document.getElementById('detailResponse').textContent = session.response || '—';
+            document.getElementById('sessionDetailModal').style.display = 'flex';
+        })
+        .catch(e => alert('Ошибка загрузки деталей'));
+}
+
+function closeDetailModal() {
+    document.getElementById('sessionDetailModal').style.display = 'none';
+}
+
+function openNoteModalFromDetail() {
+    const sessionId = document.getElementById('detailSessionId').value;
+    if (sessionId) {
+        closeDetailModal();
+        openNoteModal(parseInt(sessionId), '');
     }
-    e.target.value = '';
 }
 
-// ===== ПСИХОЛОГ: ЗАПИСЬ (MediaRecorder) =====
-let mediaRecorder = null;
-let recordedChunks = [];
-async function startPsychologistRecording() {
-    const btn = document.getElementById('psychologistVoiceBtn');
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-        btn.textContent = '🎙️ Записать';
+function openMarkModalFromDetail() {
+    const sessionId = document.getElementById('detailSessionId').value;
+    if (sessionId) {
+        closeDetailModal();
+        openMarkModal(parseInt(sessionId));
+    }
+}
+
+// ===== НАСТАВНИК: ИСТОРИЯ =====
+async function loadTutorHistory() {
+    const list = document.getElementById('historyList');
+    list.innerHTML = '<div class="status-text">Загрузка...</div>';
+    const subject = document.getElementById('historySearchSubject').value;
+    const dateFrom = document.getElementById('historyDateFrom').value;
+    const dateTo = document.getElementById('historyDateTo').value;
+    try {
+        let url = `${API_BASE}/tutor/history?`;
+        if (subject) url += `subject=${encodeURIComponent(subject)}&`;
+        if (dateFrom) url += `date_from=${encodeURIComponent(dateFrom)}&`;
+        if (dateTo) url += `date_to=${encodeURIComponent(dateTo)}&`;
+        const data = await apiRequest(url);
+        if (!data) return;
+        if (!data.sessions || data.sessions.length === 0) {
+            list.innerHTML = '<div class="status-text">📭 Нет сессий наставника</div>';
+            return;
+        }
+        const grouped = data.sessions.reduce((acc, s) => {
+            const date = new Date(s.date).toLocaleDateString();
+            if (!acc[date]) acc[date] = [];
+            acc[date].push(s);
+            return acc;
+        }, {});
+        let html = '';
+        for (const [date, sessions] of Object.entries(grouped)) {
+            html += `<div style="margin-bottom:12px;"><div style="font-weight:600;color:#1a2a6c;margin-bottom:6px;">📅 ${date}</div>`;
+            sessions.forEach(s => {
+                html += `
+                    <div class="history-item">
+                        <div class="date">${new Date(s.date).toLocaleTimeString()} ${s.is_live ? '🎓 Лекция' : '📖 Занятие'} ${s.subject ? `· ${s.subject}` : ''}</div>
+                        <div class="text"><b>Вы:</b> ${s.text}</div>
+                        <div class="text"><b>Ответ:</b> ${s.response ? s.response.substring(0, 150) + '...' : '—'}</div>
+                        <div style="margin-top:4px;">
+                            <button class="btn btn-secondary btn-small" onclick="openDetailModal(${s.id}, 'tutor')">📖 Детали</button>
+                            <button class="btn btn-secondary btn-small" onclick="openNoteModal(${s.id}, '')">📝 Заметка</button>
+                            <button class="btn btn-secondary btn-small" onclick="openMarkModal(${s.id})">🏷️ Пометка</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+        }
+        list.innerHTML = html;
+    } catch (e) { list.innerHTML = '<div class="status-text">❌ Ошибка</div>'; }
+}
+
+function clearHistoryFilters() {
+    document.getElementById('historySearchSubject').value = '';
+    document.getElementById('historyDateFrom').value = '';
+    document.getElementById('historyDateTo').value = '';
+    loadTutorHistory();
+}
+
+// ===== ЛЕКЦИЯ =====
+function toggleLiveMode() {
+    isLiveMode = !isLiveMode;
+    const btn = document.getElementById('tutorLiveBtn');
+    const status = document.getElementById('tutorLiveStatus');
+    if (isLiveMode) {
+        btn.classList.add('btn-active');
+        btn.textContent = '🎓 Лекция (вкл)';
+        status.style.display = 'inline';
+        status.textContent = '🔴 Лекция активна';
+    } else {
+        btn.classList.remove('btn-active');
+        btn.textContent = '🎓 Лекция';
+        status.style.display = 'none';
+    }
+}
+
+async function startLecture() {
+    const subject = document.getElementById('tutorSubject').value;
+    if (!subject) {
+        alert('Выберите предмет для лекции.');
         return;
     }
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        recordedChunks = [];
-        mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) recordedChunks.push(event.data);
-        };
-        mediaRecorder.onstop = async () => {
-            const blob = new Blob(recordedChunks, { type: 'audio/webm' });
-            const file = new File([blob], 'recording.webm', { type: 'audio/webm' });
-            // Имитация загрузки
-            const input = document.getElementById('psychologistAudioInput');
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            input.files = dt.files;
-            await handlePsychologistAudio({ target: input });
-            stream.getTracks().forEach(track => track.stop());
-            btn.textContent = '🎙️ Записать';
-        };
-        mediaRecorder.start();
-        btn.textContent = '⏹️ Остановить';
-    } catch (e) {
-        alert('Не удалось получить доступ к микрофону: ' + e.message);
+    // Проверяем, есть ли минуты
+    const limits = await apiRequest(`${API_BASE}/limits`);
+    if (limits && limits.tutor_minutes <= 0) {
+        alert('Недостаточно минут для лекции. Купите пакет минут.');
+        return;
     }
+    const input = document.getElementById('tutorInput');
+    input.value = `Объясни тему "${subject}" подробно, как на лекции.`;
+    // Включаем режим лекции
+    if (!isLiveMode) {
+        toggleLiveMode();
+    }
+    // Отправляем сообщение
+    sendTutorMessage();
 }
 
-// =============================================================
-// ===== НАСТАВНИК: ЧАТ =====
+// ===== НАСТАВНИК: ОТПРАВКА СООБЩЕНИЯ =====
 async function sendTutorMessage() {
     const input = document.getElementById('tutorInput');
     const text = input.value.trim();
@@ -1494,23 +1626,7 @@ async function sendTutorMessage() {
     document.getElementById('tutorSendBtn').disabled = false;
 }
 
-function toggleLiveMode() {
-    isLiveMode = !isLiveMode;
-    const btn = document.getElementById('tutorLiveBtn');
-    const status = document.getElementById('tutorLiveStatus');
-    if (isLiveMode) {
-        btn.classList.add('btn-active');
-        btn.textContent = '🎓 Лекция (вкл)';
-        status.style.display = 'inline';
-        status.textContent = '🔴 Лекция активна';
-    } else {
-        btn.classList.remove('btn-active');
-        btn.textContent = '🎓 Лекция';
-        status.style.display = 'none';
-    }
-}
-
-// ===== НАСТАВНИК: ЗАГРУЗКА ФАЙЛА =====
+// ===== НАСТАВНИК: ФАЙЛЫ =====
 async function handleTutorFile(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -1544,7 +1660,7 @@ async function handleTutorFile(e) {
     e.target.value = '';
 }
 
-// ===== НАСТАВНИК: ЗАГРУЗКА АУДИО =====
+// ===== НАСТАВНИК: АУДИО =====
 async function handleTutorAudio(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -1583,7 +1699,7 @@ async function handleTutorAudio(e) {
     e.target.value = '';
 }
 
-// ===== НАСТАВНИК: ГРАММАТИКА (текст) =====
+// ===== ГРАММАТИКА =====
 async function sendGrammarMessage() {
     const input = document.getElementById('grammarInput');
     const text = input.value.trim();
@@ -1623,7 +1739,6 @@ async function handleGrammarAudio(e) {
     document.getElementById('grammarStatus').textContent = '🔄 Распознаю и проверяю произношение...';
     const formData = new FormData();
     formData.append('audio', file);
-    // Используем эндпоинт /tutor/voice (он даст распознанный текст, а затем мы можем отправить его в грамматику)
     try {
         const result = await fetch(`${API_BASE}/tutor/voice`, {
             method: 'POST',
@@ -1635,7 +1750,6 @@ async function handleGrammarAudio(e) {
             return;
         }
         if (result.error) throw new Error(result.error);
-        // Отправим распознанный текст в грамматику
         const grammarResult = await apiRequest(`${API_BASE}/tutor/grammar`, {
             method: 'POST',
             body: `text=${encodeURIComponent(result.recognized_text || result.text || '')}`
@@ -1654,61 +1768,70 @@ async function handleGrammarAudio(e) {
     e.target.value = '';
 }
 
-// ===== НАСТАВНИК: ИСТОРИЯ =====
-async function loadTutorHistory() {
-    const list = document.getElementById('historyList');
-    list.innerHTML = '<div class="status-text">Загрузка...</div>';
-    const subject = document.getElementById('historySearchSubject').value;
-    const dateFrom = document.getElementById('historyDateFrom').value;
-    const dateTo = document.getElementById('historyDateTo').value;
+// ===== ПСИХОЛОГ =====
+async function sendPsychologistMessage() {
+    const input = document.getElementById('psychologistInput');
+    const text = input.value.trim();
+    if (!text) return;
+    const messages = document.getElementById('psychologistMessages');
+    addMessage(messages, text, true);
+    input.value = '';
+    document.getElementById('psychologistSendBtn').disabled = true;
+    document.getElementById('psychologistStatus').textContent = '🔄 Вероника пишет...';
     try {
-        let url = `${API_BASE}/tutor/history?`;
-        if (subject) url += `subject=${encodeURIComponent(subject)}&`;
-        if (dateFrom) url += `date_from=${encodeURIComponent(dateFrom)}&`;
-        if (dateTo) url += `date_to=${encodeURIComponent(dateTo)}&`;
-        const data = await apiRequest(url);
-        if (!data) return;
-        if (!data.sessions || data.sessions.length === 0) {
-            list.innerHTML = '<div class="status-text">📭 Нет сессий наставника</div>';
+        const result = await apiRequest(`${API_BASE}/psychologist/chat`, {
+            method: 'POST',
+            body: `text=${encodeURIComponent(text)}`
+        });
+        if (!result) return;
+        if (result.requires_payment) {
+            document.getElementById('psychologistStatus').textContent = '🔒 Доступ заблокирован.';
+            document.getElementById('blockedOverlay').classList.add('show');
+            document.getElementById('psychologistSendBtn').disabled = false;
             return;
         }
-        const grouped = data.sessions.reduce((acc, s) => {
-            const date = new Date(s.date).toLocaleDateString();
-            if (!acc[date]) acc[date] = [];
-            acc[date].push(s);
-            return acc;
-        }, {});
-        let html = '';
-        for (const [date, sessions] of Object.entries(grouped)) {
-            html += `<div style="margin-bottom:12px;"><div style="font-weight:600;color:#1a2a6c;margin-bottom:6px;">📅 ${date}</div>`;
-            sessions.forEach(s => {
-                html += `
-                    <div class="history-item">
-                        <div class="date">${new Date(s.date).toLocaleTimeString()} ${s.is_live ? '🎓 Лекция' : '📖 Занятие'} ${s.subject ? `· ${s.subject}` : ''}</div>
-                        <div class="text"><b>Вы:</b> ${s.text}</div>
-                        <div class="text"><b>Ответ:</b> ${s.response ? s.response.substring(0, 150) + '...' : '—'}</div>
-                        <div style="margin-top:4px;">
-                            <button class="btn btn-secondary btn-small" onclick="openMarkModal(${s.id})">🏷️ Пометка</button>
-                            <button class="btn btn-secondary btn-small" onclick="viewSession(${s.id})">📖 Детали</button>
-                        </div>
-                    </div>
-                `;
-            });
-            html += `</div>`;
+        if (result.error) throw new Error(result.error);
+        const botMsg = createBotMessage(result.response, result.audio);
+        messages.appendChild(botMsg);
+        messages.scrollTop = messages.scrollHeight;
+        loadLimits();
+        loadPsychologistHistory();
+    } catch (e) { document.getElementById('psychologistStatus').textContent = '❌ ' + e.message; }
+    document.getElementById('psychologistSendBtn').disabled = false;
+    document.getElementById('psychologistStatus').textContent = '';
+}
+
+// ===== ПСИХОЛОГ: АУДИО =====
+async function handlePsychologistAudio(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const messages = document.getElementById('psychologistMessages');
+    addMessage(messages, `🎤 Загружено аудио: ${file.name} (анализирую...)`, true);
+    document.getElementById('psychologistStatus').textContent = '🔄 Распознаю и анализирую...';
+    const formData = new FormData();
+    formData.append('audio', file);
+    try {
+        const result = await fetch(`${API_BASE}/psychologist/voice`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        }).then(r => r.json());
+        if (result.requires_payment) {
+            document.getElementById('psychologistStatus').textContent = '🔒 Доступ заблокирован.';
+            document.getElementById('blockedOverlay').classList.add('show');
+            return;
         }
-        list.innerHTML = html;
-    } catch (e) { list.innerHTML = '<div class="status-text">❌ Ошибка</div>'; }
-}
-
-function clearHistoryFilters() {
-    document.getElementById('historySearchSubject').value = '';
-    document.getElementById('historyDateFrom').value = '';
-    document.getElementById('historyDateTo').value = '';
-    loadTutorHistory();
-}
-
-function viewSession(id) {
-    alert(`Просмотр сессии ${id} (в разработке)`);
+        if (result.error) throw new Error(result.error);
+        const botMsg = createBotMessage(result.response, result.audio);
+        messages.appendChild(botMsg);
+        messages.scrollTop = messages.scrollHeight;
+        loadLimits();
+        loadPsychologistHistory();
+        document.getElementById('psychologistStatus').textContent = '';
+    } catch (e) {
+        document.getElementById('psychologistStatus').textContent = '❌ ' + e.message;
+    }
+    e.target.value = '';
 }
 
 // ===== ЗАМЕТКИ =====
@@ -1739,6 +1862,7 @@ async function saveNote() {
             alert('✅ Заметка сохранена!');
             closeNoteModal();
             loadTutorHistory();
+            loadPsychologistHistory();
         } else {
             alert('❌ Ошибка сохранения');
         }
@@ -1774,6 +1898,7 @@ async function saveMark() {
             alert('✅ Пометка сохранена!');
             closeMarkModal();
             loadTutorHistory();
+            loadPsychologistHistory();
         } else {
             alert('❌ Ошибка сохранения');
         }
@@ -1784,7 +1909,6 @@ function closeMarkModal() {
     document.getElementById('markModal').classList.remove('show');
 }
 
-// =============================================================
 // ===== ПАРЫ =====
 async function pairInvite() {
     try {
@@ -1883,7 +2007,6 @@ async function loadPairHistory() {
     } catch (e) {}
 }
 
-// =============================================================
 // ===== ВСПОМОГАТЕЛЬНЫЕ =====
 function addMessage(container, text, isUser = true) {
     const div = document.createElement('div');
@@ -1908,7 +2031,10 @@ function createBotMessage(text, audioHex) {
     const noteBtn = document.createElement('button');
     noteBtn.className = 'note-btn';
     noteBtn.textContent = '📝 Заметка';
-    noteBtn.onclick = () => openNoteModal(0, text);
+    noteBtn.onclick = () => {
+        // Находим session_id (если есть) – в сообщении не хранится, поэтому используем текущую сессию? Пока оставим 0.
+        openNoteModal(0, text);
+    };
     div.appendChild(noteBtn);
     // Аудио
     if (audioHex) {

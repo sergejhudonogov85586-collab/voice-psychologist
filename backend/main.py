@@ -169,6 +169,20 @@ def send_verification_email(email: str, code: str):
         logger.error(f"Ошибка отправки письма: {e}")
         return False
 
+# === Удаление LaTeX-разметки ===
+def clean_latex(text: str) -> str:
+    # Удаляем все LaTeX-команды, оставляя читаемый текст
+    text = re.sub(r'\\\(', '', text)
+    text = re.sub(r'\\\)', '', text)
+    text = re.sub(r'\\\[', '', text)
+    text = re.sub(r'\\\]', '', text)
+    text = re.sub(r'\$', '', text)
+    # Удаляем обратные слеши перед буквами (например, \alpha -> alpha)
+    text = re.sub(r'\\([a-zA-Z]+)', r'\1', text)
+    # Заменяем множественные пробелы на один
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
 # === ЛИМИТЫ (БД) ===
 DAILY_VOICE_LIMIT = 20
 DAILY_UPLOAD_LIMIT = 10
@@ -233,7 +247,8 @@ TUTOR_PROMPT = """Ты — профессиональный репетитор �
 Ты помогаешь школьникам и студентам по всем предметам: математика, физика, химия, биология, история, литература, английский, программирование и другим.
 Твоя задача — объяснять сложные вещи простым и разговорным языком, использовать примеры из жизни, задавать наводящие вопросы.
 Если нужно решить задачу — дай пошаговый алгоритм. Если нужно написать реферат или диплом — помоги со структурой, идеями и аргументацией.
-Ты должен быть терпеливым, поддерживающим и вдохновляющим. Отвечай на русском языке. НЕ ставь оценку настроения."""
+Ты должен быть терпеливым, поддерживающим и вдохновляющим. Отвечай на русском языке. НЕ ставь оценку настроения.
+При объяснении формул используй обычный текст без LaTeX-разметки. Например, пиши "x^2" вместо "\(x^2\)", и "квадратное уравнение ax^2 + bx + c = 0" вместо LaTeX."""
 
 def call_yandex_gpt(text: str, mode: str, user_name: str = "", context: str = "") -> str:
     url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
@@ -249,7 +264,8 @@ def call_yandex_gpt(text: str, mode: str, user_name: str = "", context: str = ""
     try:
         response = requests.post(url, headers=headers, json=data, timeout=30)
         if response.status_code == 200:
-            return response.json()["result"]["alternatives"][0]["message"]["text"]
+            raw = response.json()["result"]["alternatives"][0]["message"]["text"]
+            return clean_latex(raw)
         return f"Ошибка GPT: {response.status_code}"
     except Exception as e:
         return f"Ошибка: {str(e)}"
@@ -526,19 +542,29 @@ async def reset_trial(current_user: User = Depends(get_current_user), db = Depen
     db.commit()
     return {"status": "ok"}
 
-# === ИСТОРИЯ ПСИХОЛОГА (исправленная через сырой SQL) ===
+# === ИСТОРИЯ ПСИХОЛОГА ===
 @app.get("/history")
-async def get_psychologist_history(current_user: User = Depends(get_current_user), db = Depends(get_db)):
+async def get_psychologist_history(
+    current_user: User = Depends(get_current_user),
+    date_from: str = None,
+    date_to: str = None,
+    db = Depends(get_db)
+):
     try:
-        sessions = db.execute(
-            text("""
-                SELECT id, text, response, mood_score, created_at
-                FROM sessions
-                WHERE user_id = :user_id AND mode = 'psychologist'
-                ORDER BY created_at DESC
-            """),
-            {"user_id": current_user.id}
-        ).fetchall()
+        query = text("""
+            SELECT id, text, response, mood_score, created_at
+            FROM sessions
+            WHERE user_id = :user_id AND mode = 'psychologist'
+        """)
+        params = {"user_id": current_user.id}
+        if date_from:
+            query = text(query.text + " AND created_at >= :date_from")
+            params["date_from"] = datetime.fromisoformat(date_from)
+        if date_to:
+            query = text(query.text + " AND created_at <= :date_to")
+            params["date_to"] = datetime.fromisoformat(date_to)
+        query = text(query.text + " ORDER BY created_at DESC")
+        sessions = db.execute(query, params).fetchall()
         return {
             "sessions": [
                 {
@@ -590,18 +616,16 @@ async def psychologist_chat(text: str = Form(...), current_user: User = Depends(
         }
     }
 
-# === ПСИХОЛОГ: голосовой чат (распознавание речи) ===
+# === ПСИХОЛОГ: голосовой чат ===
 @app.post("/psychologist/voice")
 async def psychologist_voice(
     audio: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db = Depends(get_db)
 ):
-    # Проверка доступа
     if not has_psychologist_access(current_user):
         return {"error": "Доступ к психологу ограничен. Оформите подписку.", "requires_payment": True}
     
-    # Проверка лимита голосовых сессий
     is_allowed, used, limit = check_voice_limit(current_user.id, db)
     if not is_allowed:
         return {
@@ -610,23 +634,19 @@ async def psychologist_voice(
             "limits": {"voice_used": used, "voice_limit": limit}
         }
     
-    # Чтение файла
     audio_bytes = await audio.read()
     if len(audio_bytes) > 10 * 1024 * 1024:
         return {"error": "Файл слишком большой. Максимум 10 МБ."}
     
-    # Распознавание речи
     recognized_text = recognize_speech(audio_bytes, audio.filename)
     if recognized_text.startswith("Ошибка") or not recognized_text:
         return {"error": "Не удалось распознать речь."}
     
-    # Отправка распознанного текста в GPT
     response_text = call_yandex_gpt(recognized_text, "psychologist", current_user.name)
     mood_score = extract_mood_score(response_text)
     if mood_score:
         response_text = re.sub(r'\s*\[Оценка настроения:\s*\d+\s*/10\]\s*', '', response_text).strip()
     
-    # Сохранение сессии
     session = Session(
         user_id=current_user.id,
         mode="psychologist",
@@ -637,15 +657,12 @@ async def psychologist_voice(
     db.add(session)
     db.commit()
     
-    # Инкремент лимита голосовых сессий
     increment_voice_usage(current_user.id, db)
     
-    # Синтез речи ответа
     audio_data = None
     if current_user.voice_responses_enabled:
         audio_data = synthesize_speech(response_text)
     
-    # Лимиты для ответа
     _, voice_used, voice_limit = check_voice_limit(current_user.id, db)
     _, upload_used, upload_limit = check_upload_limit(current_user.id, db)
     
@@ -680,6 +697,8 @@ async def tutor_chat(
         db.commit()
     
     context = f"Предмет: {subject or 'Общий'}\n" if subject else ""
+    if is_live:
+        context += "Дай развёрнутый ответ, как на лекции, с подробными объяснениями и примерами.\n"
     response_text = call_yandex_gpt(text, "tutor", current_user.name, context)
     
     session = Session(
@@ -739,6 +758,8 @@ async def tutor_voice(
         db.commit()
     
     context = f"Предмет: {subject or 'Общий'}\n" if subject else ""
+    if is_live:
+        context += "Дай развёрнутый ответ, как на лекции, с подробными объяснениями и примерами.\n"
     response_text = call_yandex_gpt(recognized_text, "tutor", current_user.name, context)
     
     session = Session(
